@@ -7,6 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ============================================================================ #
+
+set(JUCE_PATH "/Users/nicorusso/Development/JUCE/"
+    CACHE PATH "Path to an external JUCE checkout")
+
+# ============================================================================ #
+
 if(CMAKE_GENERATOR MATCHES "Xcode|Visual Studio")
     message(WARNING
         "Generator '${CMAKE_GENERATOR}' does not support "
@@ -15,9 +22,7 @@ if(CMAKE_GENERATOR MATCHES "Xcode|Visual Studio")
         "compile_commands.json for clangd.")
 endif()
 
-set(JUCE_PATH "" CACHE PATH "Path to an external JUCE checkout")
-
-if (JUCE_PATH)
+if(JUCE_PATH)
     add_subdirectory(${JUCE_PATH} JUCE)
 else()
     include(FetchContent)
@@ -28,6 +33,9 @@ else()
     )
     FetchContent_MakeAvailable(JUCE)
 endif()
+
+# ============================================================================ #
+
 
 juce_add_plugin(FromScratch
     PRODUCT_NAME "From Scratch"
