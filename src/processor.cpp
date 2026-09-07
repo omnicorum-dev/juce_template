@@ -25,22 +25,38 @@ Processor::~Processor() = default;
 APVTS::ParameterLayout Processor::createParameterLayout() {
     APVTS::ParameterLayout layout;
 
-    addFloat(layout, Params::inGain_ID, Params::inGain_name, Params::inGain_min,
-             Params::inGain_max, Params::inGain_default,
-             Params::inGain_stepSize, Params::inGain_skew,
+    addFloat(layout,
+             Params::inGain_ID,
+             Params::inGain_name,
+             Params::inGain_min,
+             Params::inGain_max,
+             Params::inGain_default,
+             Params::inGain_stepSize,
+             Params::inGain_skew,
              Params::inGain_suffix);
 
-    addFloat(layout, Params::outGain_ID, Params::outGain_name,
-             Params::outGain_min, Params::outGain_max, Params::outGain_default,
-             Params::outGain_stepSize, Params::outGain_skew,
+    addFloat(layout,
+             Params::outGain_ID,
+             Params::outGain_name,
+             Params::outGain_min,
+             Params::outGain_max,
+             Params::outGain_default,
+             Params::outGain_stepSize,
+             Params::outGain_skew,
              Params::outGain_suffix);
 
-    addFloat(layout, Params::mix_ID, Params::mix_name, Params::mix_min,
-             Params::mix_max, Params::mix_default, Params::mix_stepSize,
-             Params::mix_skew, Params::mix_suffix);
+    addFloat(layout,
+             Params::mix_ID,
+             Params::mix_name,
+             Params::mix_min,
+             Params::mix_max,
+             Params::mix_default,
+             Params::mix_stepSize,
+             Params::mix_skew,
+             Params::mix_suffix);
 
-    addBool(layout, Params::bypass_ID, Params::bypass_name,
-            Params::bypass_default);
+    addBool(
+        layout, Params::bypass_ID, Params::bypass_name, Params::bypass_default);
 
     // use addInt and addChoice for ints and choices
 
@@ -63,11 +79,11 @@ void Processor::prepareToPlay(double sample_rate, int buffer_size) {
 void Processor::releaseResources() {}
 
 void Processor::processBlock(juce::AudioBuffer<float> &buffer,
-                             juce::MidiBuffer &messages) {
+                             juce::MidiBuffer         &messages) {
     juce::ScopedNoDenormals no_denormals;
-    auto total_input_channels = getTotalNumInputChannels();
-    auto total_output_channels = getTotalNumOutputChannels();
-    auto num_samples = buffer.getNumSamples();
+    auto                    total_input_channels  = getTotalNumInputChannels();
+    auto                    total_output_channels = getTotalNumOutputChannels();
+    auto                    num_samples           = buffer.getNumSamples();
 
     for (auto i = total_input_channels; i < total_output_channels; ++i) {
         buffer.clear(i, 0, buffer.getNumSamples());
@@ -92,7 +108,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     // Process audio
 
     constexpr int max_channels = 8;
-    auto num_channels = total_input_channels;
+    auto          num_channels = total_input_channels;
 
     std::array<float *, max_channels> channel_ptrs;
 
@@ -101,16 +117,16 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     }
 
     for (int sample = 0; sample < num_samples; ++sample) {
-        float in_gain = std::pow(10.f, inGainSmooth.getNextValue() / 20.f);
+        float in_gain  = std::pow(10.f, inGainSmooth.getNextValue() / 20.f);
         float out_gain = std::pow(10.f, outGainSmooth.getNextValue() / 20.f);
-        float mix = mixSmooth.getNextValue();
+        float mix      = mixSmooth.getNextValue();
 
         // Update objects for continuous changes here
 
         for (int channel = 0; channel < num_channels; ++channel) {
             float *channel_data = channel_ptrs[(size_t)channel];
-            float dry = channel_data[sample];
-            float xn = dry * in_gain;
+            float  dry          = channel_data[sample];
+            float  xn           = dry * in_gain;
 
             /* ======================================================== */
 
@@ -127,7 +143,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 /* ======================================================== */
 
 void Processor::getStateInformation(juce::MemoryBlock &dest) {
-    auto state = apvts.copyState();
+    auto                              state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, dest);
 }
