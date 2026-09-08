@@ -16,7 +16,7 @@
 #define SCString static constexpr const char *
 
 struct Skew {
-    SCFloat linear = 1.0f;
+    SCFloat linear      = 1.0f;
     SCFloat exponential = 3.f;
     SCFloat logarithmic = 0.3f;
 };
@@ -28,8 +28,10 @@ void addFloat(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
               const float max, const float defaultValue, const float stepSize,
               const float skew = 1.f, const char *suffix = "") {
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID(ID, 1), name,
-        juce::NormalisableRange<float>(min, max, stepSize, skew), defaultValue,
+        juce::ParameterID(ID, 1),
+        name,
+        juce::NormalisableRange<float>(min, max, stepSize, skew),
+        defaultValue,
         suffix));
 }
 
@@ -53,21 +55,21 @@ void addChoice(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
         juce::ParameterID(ID, 1), name, choices, defaultValue));
 }
 
-class pdcFloat {
+class pFloat {
   public:
-    pdcFloat() { apvts = nullptr; }
+    pFloat() { apvts = nullptr; }
 
     void prepare(double _sampleRate, int _blockSize,
                  juce::AudioProcessorValueTreeState *_apvts, const char *_ID,
                  double _smoothRate = 0.02) {
         smoothRate = _smoothRate;
-        ID = _ID;
-        apvts = _apvts;
+        ID         = _ID;
+        apvts      = _apvts;
         reset(_sampleRate, _blockSize);
     }
 
     void reset(double _sampleRate, int _blockSize) {
-        fs = _sampleRate;
+        fs        = _sampleRate;
         blockSize = _blockSize;
 
         smoothValue.reset(fs, smoothRate);
@@ -83,13 +85,13 @@ class pdcFloat {
 
     float getRawAndUpdate() {
         prevValue = rawValue;
-        rawValue = apvts->getRawParameterValue(ID)->load();
+        rawValue  = apvts->getRawParameterValue(ID)->load();
         smoothValue.setTargetValue(rawValue);
         return rawValue;
     }
 
     void update() {
-        prevValue = rawValue;
+        prevValue    = rawValue;
         float newRaw = apvts->getRawParameterValue(ID)->load();
         if (newRaw != rawValue) {
             rawValue = newRaw;
@@ -109,26 +111,26 @@ class pdcFloat {
 
   private:
     juce::AudioProcessorValueTreeState *apvts;
-    juce::SmoothedValue<float> smoothValue;
-    const char *ID;
-    float rawValue;
-    float prevValue;
-    double fs;
-    double smoothRate;
-    int blockSize;
+    juce::SmoothedValue<float>          smoothValue;
+    const char                         *ID;
+    float                               rawValue;
+    float                               prevValue;
+    double                              fs;
+    double                              smoothRate;
+    int                                 blockSize;
 };
 
-class pdcBool {
+class pBool {
   public:
     void prepare(double _sampleRate, int _blockSize,
                  juce::AudioProcessorValueTreeState *_apvts, const char *_ID) {
-        ID = _ID;
+        ID    = _ID;
         apvts = _apvts;
         reset(_sampleRate, _blockSize);
     }
 
     void reset(double _sampleRate, int _blockSize) {
-        fs = _sampleRate;
+        fs        = _sampleRate;
         blockSize = _blockSize;
 
         param = apvts->getRawParameterValue(ID);
@@ -136,7 +138,7 @@ class pdcBool {
 
     bool getNextValue() {
         prevValue = rawValue;
-        rawValue = param->load() > 0.5f;
+        rawValue  = param->load() > 0.5f;
         return rawValue;
     }
 
@@ -146,25 +148,25 @@ class pdcBool {
 
   private:
     juce::AudioProcessorValueTreeState *apvts;
-    std::atomic<float> *param = nullptr;
-    const char *ID;
-    bool rawValue;
-    bool prevValue;
-    double fs;
-    int blockSize;
+    std::atomic<float>                 *param = nullptr;
+    const char                         *ID;
+    bool                                rawValue;
+    bool                                prevValue;
+    double                              fs;
+    int                                 blockSize;
 };
 
-class pdcInt {
+class pInt {
   public:
     void prepare(double _sampleRate, int _blockSize,
                  juce::AudioProcessorValueTreeState *_apvts, const char *_ID) {
-        ID = _ID;
+        ID    = _ID;
         apvts = _apvts;
         reset(_sampleRate, _blockSize);
     }
 
     void reset(double _sampleRate, int _blockSize) {
-        fs = _sampleRate;
+        fs        = _sampleRate;
         blockSize = _blockSize;
 
         param = apvts->getRawParameterValue(ID);
@@ -172,7 +174,7 @@ class pdcInt {
 
     int getNextValue() {
         prevValue = rawValue;
-        rawValue = static_cast<int>(param->load());
+        rawValue  = static_cast<int>(param->load());
         return rawValue;
     }
 
@@ -182,10 +184,10 @@ class pdcInt {
 
   private:
     juce::AudioProcessorValueTreeState *apvts;
-    std::atomic<float> *param = nullptr;
-    const char *ID;
-    int rawValue;
-    int prevValue;
-    double fs;
-    int blockSize;
+    std::atomic<float>                 *param = nullptr;
+    const char                         *ID;
+    int                                 rawValue;
+    int                                 prevValue;
+    double                              fs;
+    int                                 blockSize;
 };

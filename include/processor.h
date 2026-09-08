@@ -117,11 +117,11 @@ class Processor final : public juce::AudioProcessor {
         */
     };
 
-    pdcFloat inGainSmooth;
-    pdcFloat outGainSmooth;
-    pdcFloat mixSmooth;
+    pFloat inGainSmooth;
+    pFloat outGainSmooth;
+    pFloat mixSmooth;
 
-    pdcBool bypassParam;
+    pBool bypassParam;
 
   private:
     static APVTS::ParameterLayout createParameterLayout();
