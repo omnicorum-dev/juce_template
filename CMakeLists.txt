@@ -36,7 +36,6 @@ endif()
 
 # ============================================================================ #
 
-
 juce_add_plugin(FromScratch
     PRODUCT_NAME "From Scratch"
     COMPANY_NAME "Omnicorum"
@@ -80,6 +79,7 @@ target_compile_definitions(FromScratch
 target_link_libraries(FromScratch
     PRIVATE
         juce::juce_audio_utils
+        juce::juce_audio_devices
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
