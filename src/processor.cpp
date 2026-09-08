@@ -2,6 +2,7 @@
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "juce_core/juce_core.h"
+#include "midi_cursor.h"
 
 /* ======================================================== */
 
@@ -105,7 +106,9 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     // Update objects for discrete changes
     // eg. if (filterTypeParam.changed()) filter.updateCoefficients();
 
-    // Process audio
+    // Process audio and midi messages
+
+    MidiCursor midi(messages);
 
     constexpr int max_channels = 8;
     auto          num_channels = total_input_channels;
@@ -117,6 +120,16 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     }
 
     for (int sample = 0; sample < num_samples; ++sample) {
+
+        while (midi.hasEvent() && midi.event().samplePosition == sample) {
+            juce::MidiMessage message = midi.event().getMessage();
+
+            // apply changes for this sample based on the midi message received
+            // this sample
+
+            midi.advance();
+        }
+
         float in_gain  = std::pow(10.f, inGainSmooth.getNextValue() / 20.f);
         float out_gain = std::pow(10.f, outGainSmooth.getNextValue() / 20.f);
         float mix      = mixSmooth.getNextValue();
