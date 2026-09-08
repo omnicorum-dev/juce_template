@@ -81,16 +81,18 @@ void Processor::releaseResources() {}
 
 void Processor::processBlock(juce::AudioBuffer<float> &buffer,
                              juce::MidiBuffer         &messages) {
+
     juce::ScopedNoDenormals no_denormals;
-    auto                    total_input_channels  = getTotalNumInputChannels();
-    auto                    total_output_channels = getTotalNumOutputChannels();
-    auto                    num_samples           = buffer.getNumSamples();
+
+    int total_input_channels  = getTotalNumInputChannels();
+    int total_output_channels = getTotalNumOutputChannels();
+    int num_samples           = buffer.getNumSamples();
 
     for (auto i = total_input_channels; i < total_output_channels; ++i) {
         buffer.clear(i, 0, buffer.getNumSamples());
     }
 
-    (void)messages;
+    /* ======================================================== */
 
     // Read all control-rate parameters
     bool bypass = bypassParam.getNextValue();
@@ -106,7 +108,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     // Update objects for discrete changes
     // eg. if (filterTypeParam.changed()) filter.updateCoefficients();
 
-    // Process audio and midi messages
+    /* ======================================================== */
 
     MidiCursor midi(messages);
 
@@ -118,6 +120,10 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     for (int channel = 0; channel < num_channels; ++channel) {
         channel_ptrs[(size_t)channel] = buffer.getWritePointer(channel);
     }
+
+    /* ======================================================== */
+
+    // Process audio and midi messages
 
     for (int sample = 0; sample < num_samples; ++sample) {
 
