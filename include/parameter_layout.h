@@ -10,10 +10,14 @@
 
 #pragma once
 
+#include "juce_audio_processors/juce_audio_processors.h"
+#include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #define SCFloat static constexpr float
 #define SCInt static constexpr int
 #define SCBool static constexpr bool
 #define SCString static constexpr const char *
+
+typedef juce::AudioProcessorValueTreeState APVTS;
 
 struct Skew {
     SCFloat linear      = 1.0f;
@@ -23,34 +27,39 @@ struct Skew {
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-void addFloat(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
-              const char *ID, const char *name, const float min,
-              const float max, const float defaultValue, const float stepSize,
-              const float skew = 1.f, const char *suffix = "") {
+inline void addFloat(APVTS::ParameterLayout &layout, const char *ID,
+                     const char *name, const float min, const float max,
+                     const float defaultValue, const float stepSize,
+                     const float skew = 1.f, const char *suffix = "") {
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID(ID, 1),
         name,
         juce::NormalisableRange<float>(min, max, stepSize, skew),
         defaultValue,
-        suffix));
+        juce::AudioParameterFloatAttributes().withLabel(suffix)));
 }
 
-void addBool(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
-             const char *ID, const char *name, const bool defaultValue) {
+inline void addBool(APVTS::ParameterLayout &layout, const char *ID,
+                    const char *name, const bool defaultValue) {
     layout.add(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID(ID, 1), name, defaultValue));
 }
 
-void addInt(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
-            const char *ID, const char *name, const int min, const int max,
-            const int defaultValue, const char *suffix = "") {
+inline void addInt(APVTS::ParameterLayout &layout, const char *ID,
+                   const char *name, const int min, const int max,
+                   const int defaultValue, const char *suffix = "") {
     layout.add(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID(ID, 1), name, min, max, defaultValue, suffix));
+        juce::ParameterID(ID, 1),
+        name,
+        min,
+        max,
+        defaultValue,
+        juce::AudioParameterIntAttributes().withLabel(suffix)));
 }
 
-void addChoice(juce::AudioProcessorValueTreeState::ParameterLayout &layout,
-               const char *ID, const char *name, juce::StringArray choices,
-               const int defaultValue) {
+inline void addChoice(APVTS::ParameterLayout &layout, const char *ID,
+                      const char *name, juce::StringArray choices,
+                      const int defaultValue) {
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID(ID, 1), name, choices, defaultValue));
 }

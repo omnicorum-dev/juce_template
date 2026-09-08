@@ -3,8 +3,6 @@
 #include "parameter_layout.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
-typedef juce::AudioProcessorValueTreeState APVTS;
-
 class Processor final : public juce::AudioProcessor {
   public:
     /* ======================================================== */
