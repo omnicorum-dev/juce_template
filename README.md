@@ -12,7 +12,8 @@ to a FetchContent, so if you don't want multiple copies
 of JUCE hanging around your computer, just set `JUCE_PATH`
 
 To generate the compile commands used by clangd, make sure
-to run the CMake configure step.
+to run the CMake configure step. (I usually use Ninja.
+XCode and MSVC won't generate the clang compile commands!)
 
 ```sh
 cmake -B build -G Ninja
