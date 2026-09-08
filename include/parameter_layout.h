@@ -25,7 +25,7 @@ struct Skew {
     SCFloat logarithmic = 0.3f;
 };
 
-#include <juce_audio_processors/juce_audio_processors.h>
+/* ======================================================== */
 
 inline void addFloat(APVTS::ParameterLayout &layout, const char *ID,
                      const char *name, const float min, const float max,
@@ -63,6 +63,8 @@ inline void addChoice(APVTS::ParameterLayout &layout, const char *ID,
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID(ID, 1), name, choices, defaultValue));
 }
+
+/* ======================================================== */
 
 class pFloat {
   public:
