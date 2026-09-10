@@ -16,6 +16,7 @@
 #define SCInt static constexpr int
 #define SCBool static constexpr bool
 #define SCString static constexpr const char *
+#define SCStringArr inline static const juce::StringArray
 
 typedef juce::AudioProcessorValueTreeState APVTS;
 
