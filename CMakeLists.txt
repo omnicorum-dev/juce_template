@@ -43,6 +43,12 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
+if(APPLE)
+    set(BUILD_FORMATS AU VST3 Standalone)
+else()
+    set(BUILD_FORMATS VST3 Standalone)
+endif()
+
 # ============================================================================ #
 
 juce_add_plugin(FromScratch
@@ -52,7 +58,7 @@ juce_add_plugin(FromScratch
     PLUGIN_MANUFACTURER_CODE Omni
     PLUGIN_CODE frsc
 
-    FORMATS AU VST3 Standalone
+    FORMATS ${BUILD_FORMATS}
 
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
