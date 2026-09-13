@@ -59,8 +59,6 @@ APVTS::ParameterLayout Processor::createParameterLayout() {
     addBool(
         layout, Params::bypass_ID, Params::bypass_name, Params::bypass_default);
 
-    // use addInt and addChoice for ints and choices
-
     return layout;
 }
 
@@ -72,9 +70,6 @@ void Processor::prepareToPlay(double sample_rate, int buffer_size) {
     mixSmooth.prepare(sample_rate, buffer_size, &apvts, Params::mix_ID);
 
     bypassParam.prepare(sample_rate, buffer_size, &apvts, Params::bypass_ID);
-
-    // Prepare any objects here
-    // e.g. Delay.prepare(sample_rate);
 }
 
 void Processor::releaseResources() {}
@@ -84,54 +79,61 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 
     juce::ScopedNoDenormals no_denormals;
 
-    int total_input_channels  = getTotalNumInputChannels();
-    int total_output_channels = getTotalNumOutputChannels();
-    int num_samples           = buffer.getNumSamples();
+    size_t total_input_channels  = (size_t)getTotalNumInputChannels();
+    size_t total_output_channels = (size_t)getTotalNumOutputChannels();
+    size_t num_samples           = (size_t)buffer.getNumSamples();
 
     for (auto i = total_input_channels; i < total_output_channels; ++i) {
-        buffer.clear(i, 0, buffer.getNumSamples());
+        buffer.clear((int)i, 0, buffer.getNumSamples());
     }
 
-    /* ======================================================== */
-
-    // Read all control-rate parameters
     bool bypass = bypassParam.getNextValue();
 
     if (bypass)
         return;
+
+    /* ======================================================== */
+
+    // Read control-rate parameters
+
+    /* ======================================================== */
 
     // Update smoothers
     outGainSmooth.update();
     inGainSmooth.update();
     mixSmooth.update();
 
+    /* ======================================================== */
+
     // Update objects for discrete changes
-    // eg. if (filterTypeParam.changed()) filter.updateCoefficients();
 
     /* ======================================================== */
 
     MidiCursor midi(messages);
 
-    constexpr int max_channels = 8;
-    auto          num_channels = total_input_channels;
+    constexpr size_t max_channels = 8;
+    size_t           num_channels = total_output_channels;
 
     std::array<float *, max_channels> channel_ptrs;
 
-    for (int channel = 0; channel < num_channels; ++channel) {
-        channel_ptrs[(size_t)channel] = buffer.getWritePointer(channel);
+    for (size_t channel = 0; channel < num_channels; ++channel) {
+        channel_ptrs[channel] = buffer.getWritePointer((int)channel);
     }
 
     /* ======================================================== */
 
-    // Process audio and midi messages
+    // SAMPLE/CHANNEL LOOP
 
-    for (int sample = 0; sample < num_samples; ++sample) {
+    for (size_t sample = 0; sample < num_samples; ++sample) {
 
-        while (midi.hasEvent() && midi.event().samplePosition == sample) {
+        while (midi.hasEvent() && midi.event().samplePosition == (int)sample) {
             juce::MidiMessage message = midi.event().getMessage();
 
-            // apply changes for this sample based on the midi message received
-            // this sample
+            /* ======================================================== */
+
+            // apply changes based on the midi message received this sample
+
+            /* ======================================================== */
 
             midi.advance();
         }
@@ -140,16 +142,24 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
         float out_gain = std::pow(10.f, outGainSmooth.getNextValue() / 20.f);
         float mix      = mixSmooth.getNextValue();
 
-        // Update objects for continuous changes here
+        /* ======================================================== */
 
-        for (int channel = 0; channel < num_channels; ++channel) {
-            float *channel_data = channel_ptrs[(size_t)channel];
+        // Read sample-rate parameters
+
+        /* ======================================================== */
+
+        // Update objects for continuous changes
+
+        /* ======================================================== */
+
+        for (size_t channel = 0; channel < num_channels; ++channel) {
+            float *channel_data = channel_ptrs[channel];
             float  dry          = channel_data[sample];
             float  xn           = dry * in_gain;
 
             /* ======================================================== */
 
-            float yn = xn; // your per-channel DSP goes here
+            float yn = xn;
 
             /* ======================================================== */
 

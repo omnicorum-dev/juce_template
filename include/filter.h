@@ -1,0 +1,343 @@
+#pragma once
+
+#include <array>
+
+namespace omni {
+
+constexpr double twoPi = 2.0 * M_PI;
+
+class Biquad {
+  public:
+    virtual void updateCoeffs() = 0;
+
+    Biquad() { reset(); }
+
+    void prepare(double _sample_rate, int _buffer_size) {
+        fs          = _sample_rate;
+        buffer_size = _buffer_size;
+    }
+
+    void reset() {
+        f0    = 1000.f;
+        Q     = 0.7071f;
+        A     = 1.f;
+        w0    = 0;
+        alpha = 0;
+        b0    = 1;
+        b1    = 0;
+        b2    = 0;
+        a0    = 1;
+        a1    = 0;
+        a2    = 0;
+    }
+
+    void setFreq(float freq) {
+        f0 = freq;
+        updateCoeffs();
+    }
+
+    void setQ(float q) {
+        Q = q;
+        updateCoeffs();
+    }
+
+    void setA(float a) {
+        A = a;
+        updateCoeffs();
+    }
+
+    void setAll(float freq, float q, float a) {
+        f0 = freq;
+        Q  = q;
+        A  = a;
+        updateCoeffs();
+    }
+
+    double processSample(double xn) {
+        double feedforward = (b0 * xn) + (b1 * xnm1) + (b2 * xnm2);
+        double feedback    = (a1 * ynm1) + (a2 * ynm2);
+        double yn          = (1.0 / a0) * (feedforward - feedback);
+
+        xnm2 = xnm1;
+        xnm1 = xn;
+        ynm2 = ynm1;
+        ynm1 = yn;
+
+        return yn;
+    }
+
+  protected:
+    double fs          = 48000;
+    int    buffer_size = 512;
+
+    double f0, Q, A;
+    double w0, alpha;
+    double a0, a1, a2, b0, b1, b2;
+    double xnm1, xnm2, ynm1, ynm2;
+};
+
+enum class FilterType {
+    LOWPASS = 0,
+    HIGHPASS,
+    BANDPASS_SKIRT,
+    BANDPASS_PEAK,
+    NOTCH,
+    BELL,
+    HIGHSHELF,
+    LOWSHELF,
+    ALLPASS,
+};
+
+class RBJ : public Biquad {
+  public:
+    void setFilterType(FilterType new_filter_type) {
+        filter_type = new_filter_type;
+        updateCoeffs();
+    }
+
+    void updateCoeffs() override {
+        w0           = twoPi * f0 / fs;
+        alpha        = sin(w0) / (2 * Q);
+        double coswo = cos(w0);
+
+        switch (filter_type) {
+        case FilterType::LOWPASS:
+            b0 = (1 - coswo) / 2.f;
+            b1 = 1 - coswo;
+            b2 = b0;
+            a0 = 1 + alpha;
+            a1 = -2 * coswo;
+            a2 = 1 - alpha;
+            break;
+        case FilterType::HIGHPASS:
+            b0 = (1 + coswo) / 2.f;
+            b1 = -(1 + coswo);
+            b2 = b0;
+            a0 = 1 + alpha;
+            a1 = -2 * coswo;
+            a2 = 1 - alpha;
+            break;
+        case FilterType::BANDPASS_SKIRT:
+            b0 = Q * alpha;
+            b1 = 0;
+            b2 = -b0;
+            a0 = 1 + alpha;
+            a1 = -2 * coswo;
+            a2 = 1 - alpha;
+            break;
+        case FilterType::BANDPASS_PEAK:
+            b0 = alpha;
+            b1 = 0;
+            b2 = -alpha;
+            a0 = 1.f + alpha;
+            a1 = -2.f * coswo;
+            a2 = 1.f - alpha;
+            break;
+        case FilterType::NOTCH:
+            b0 = 1.f;
+            b1 = -2.f * coswo;
+            b2 = 1.f;
+            a0 = 1.f + alpha;
+            a1 = b1;
+            a2 = 1.f - alpha;
+            break;
+        case FilterType::BELL:
+            b0 = 1 + (alpha * A);
+            b1 = -2 * coswo;
+            b2 = 1 - (alpha * A);
+            a0 = 1 + (alpha / A);
+            a1 = b1;
+            a2 = 1 - (alpha / A);
+            break;
+        case FilterType::HIGHSHELF: {
+            double twoasqrtA = 2 * alpha * std::sqrt(A);
+            double ap1       = A + 1;
+            double am1       = A - 1;
+
+            b0 = A * ((ap1) + ((am1)*coswo) + (twoasqrtA));
+            b1 = -2 * A * ((am1) + ((ap1)*coswo));
+            b2 = A * ((ap1) + ((am1)*coswo) - (twoasqrtA));
+            a0 = (ap1) - ((am1)*coswo) + (twoasqrtA);
+            a1 = 2 * ((am1) - ((ap1)*coswo));
+            a2 = (ap1) - ((am1)*coswo) - (twoasqrtA);
+            break;
+        }
+        case FilterType::LOWSHELF: {
+            double twoasqrtA = 2 * alpha * std::sqrt(A);
+            double ap1       = A + 1;
+            double am1       = A - 1;
+
+            b0 = A * ((ap1) - ((am1)*coswo) + (twoasqrtA));
+            b1 = 2 * A * ((am1) - ((ap1)*coswo));
+            b2 = A * ((ap1) - ((am1)*coswo) - (twoasqrtA));
+            a0 = (ap1) + ((am1)*coswo) + (twoasqrtA);
+            a1 = -2 * ((am1) + ((ap1)*coswo));
+            a2 = (ap1) + ((am1)*coswo) - (twoasqrtA);
+            break;
+        }
+        case FilterType::ALLPASS:
+            b0 = 1 - alpha;
+            b1 = -2 * coswo;
+            b2 = 1 + alpha;
+            a0 = b2;
+            a1 = b1;
+            a2 = b0;
+            break;
+        default:
+            break;
+        }
+    }
+
+  private:
+    FilterType filter_type = FilterType::LOWPASS;
+};
+
+class LR4 {
+  public:
+    void prepare(float _sample_rate, int _buffer_size) {
+        stage1.prepare(_sample_rate, _buffer_size);
+        stage2.prepare(_sample_rate, _buffer_size);
+
+        stage1.setQ(0.7071f);
+        stage2.setQ(0.7071f);
+    }
+
+    void setFilterType(FilterType new_filter_type) {
+        if (new_filter_type != FilterType::LOWPASS &&
+            new_filter_type != FilterType::HIGHPASS) {
+            new_filter_type = FilterType::LOWPASS;
+        }
+
+        stage1.setFilterType(new_filter_type);
+        stage2.setFilterType(new_filter_type);
+    }
+
+    void setFreq(float new_freq) {
+        stage1.setFreq(new_freq);
+        stage2.setFreq(new_freq);
+    }
+
+    double processSample(double xn) {
+        double wn = stage1.processSample(xn);
+        return stage2.processSample(wn);
+    }
+
+  private:
+    RBJ stage1, stage2;
+};
+
+class DCBlocker {
+  public:
+    double processSample(double xn) {
+        double yn = xn - xnm1 + R * ynm1;
+
+        xnm1 = xn;
+        ynm1 = yn;
+
+        return yn;
+    }
+
+  private:
+    static constexpr double R = 0.9999;
+
+    double xnm1 = 0.f;
+    double ynm1 = 0.f;
+};
+
+template <int max_stages> class Butterworth {
+  public:
+    void prepare(double _sample_rate, int _buffer_size) {
+        sample_rate = _sample_rate;
+        for (auto &s : stages)
+            s.prepare(_sample_rate, _buffer_size);
+        updateCoeffs();
+    }
+
+    double processSample(double xn) {
+        double yn = xn;
+        for (int i = 0; i < num_stages; ++i)
+            yn = stages[i].processSample(yn);
+        return yn;
+    }
+
+    void setFilterType(FilterType type) {
+        if (type != FilterType::LOWPASS && type != FilterType::HIGHPASS) {
+            type = FilterType::LOWPASS;
+        }
+        filter_type = type;
+        for (int i = 0; i < num_stages; ++i)
+            stages[i].setFilterType(filter_type);
+        updateCoeffs();
+    }
+
+    void setStages(int _stages) {
+        num_stages = std::max(1, std::min(_stages, (int)max_stages));
+        for (int i = 0; i < num_stages; ++i)
+            stages[i].setFilterType(filter_type);
+        updateCoeffs();
+    }
+
+    void setFreq(float freq) {
+        target_freq = freq;
+        updateCoeffs();
+    }
+
+    void setQ(float q) {
+        resonance_q = std::max(q, 0.001f);
+        updateCoeffs();
+    }
+
+    void setFreqAndQ(float freq, float q) {
+        target_freq = freq;
+        resonance_q = std::max(q, 0.001f);
+        updateCoeffs();
+    }
+
+    int   getNumStages() const { return num_stages; }
+    float getStageFreq(int i) const { return stage_freq[i]; }
+    float getStageQ(int i) const { return stage_q[i]; }
+
+  protected:
+    void updateCoeffs() {
+        if (sample_rate <= 0.f || num_stages <= 0)
+            return;
+
+        std::array<float, max_stages> relFreq{};
+        std::array<float, max_stages> q{};
+
+        int   n    = num_stages;
+        float Nord = (float)n * 2;
+
+        for (int m = 0; m < n; ++m) {
+            float theta =
+                (2.f * ((float)m + 1.f) - 1.f) * (float)M_PI / (2.f * Nord);
+            relFreq[m] = 1.f;
+            q[m]       = 1.f / (2.f * std::cos(theta));
+        }
+
+        constexpr double neutralQ = 0.7071;
+        q[n - 1] *= (resonance_q / neutralQ);
+
+        for (int m = 0; m < num_stages; ++m) {
+            stage_freq[m] = target_freq * relFreq[m];
+            stage_q[m]    = q[m];
+            stages[m].setFreq(stage_freq[m]);
+            stages[m].setQ(stage_q[m]);
+        }
+    }
+
+  protected:
+    FilterType filter_type = FilterType::LOWPASS;
+    int        num_stages  = 2;
+    double     sample_rate = 48000.f;
+    float      target_freq = 1000.f;
+
+  private:
+    double resonance_q = 0.7071;
+
+    std::array<RBJ, max_stages>   stages;
+    std::array<float, max_stages> stage_freq{};
+    std::array<float, max_stages> stage_q{};
+};
+
+} // namespace omni

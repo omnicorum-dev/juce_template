@@ -49,6 +49,7 @@ juce_add_plugin(FromScratch
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
+
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
 
     COPY_PLUGIN_AFTER_BUILD TRUE
@@ -67,6 +68,7 @@ target_sources(FromScratch
 target_include_directories(FromScratch
     PRIVATE
         include/
+        src/
 )
 
 target_compile_definitions(FromScratch

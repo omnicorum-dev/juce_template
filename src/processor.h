@@ -3,6 +3,8 @@
 #include "parameter_layout.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
+using namespace omni;
+
 class Processor final : public juce::AudioProcessor {
   public:
     /* ======================================================== */
@@ -16,7 +18,7 @@ class Processor final : public juce::AudioProcessor {
     const juce::String getName() const override { return JucePlugin_Name; }
     // juce::StringArray getAlternateDisplayNames() const override;
 
-    void prepareToPlay(double sampleRate, int expectedBlockSize) override;
+    void prepareToPlay(double sample_rate, int expected_block_size) override;
 
     void releaseResources() override;
 
@@ -27,13 +29,28 @@ class Processor final : public juce::AudioProcessor {
 
     bool hasEditor() const override { return true; }
 
-    void getStateInformation(juce::MemoryBlock &destData) override;
-    void setStateInformation(const void *data, int sizeInBytes) override;
+    void getStateInformation(juce::MemoryBlock &dest_data) override;
+    void setStateInformation(const void *data, int size_bytes) override;
 
     /* ======================================================== */
 
-    bool acceptsMidi() const override { return false; }
-    bool producesMidi() const override { return false; }
+    bool acceptsMidi() const override {
+#if (JucePlugin_IsMidiEffect || JucePlugin_IsSynth)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    bool producesMidi() const override {
+#if JucePlugin_IsMidiEffect
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    /* ======================================================== */
 
     int                getNumPrograms() override { return 1; }
     int                getCurrentProgram() override { return 0; }
@@ -49,6 +66,7 @@ class Processor final : public juce::AudioProcessor {
     juce::AudioProcessorEditor *createEditor() override {
         return new juce::GenericAudioProcessorEditor(*this);
     }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Processor)
 
     /* ======================================================== */
@@ -91,28 +109,6 @@ class Processor final : public juce::AudioProcessor {
         SCString bypass_ID      = "bypass";
         SCString bypass_name    = "Bypass";
         SCBool   bypass_default = false;
-
-        // example (int)
-        /*
-        SCString example_ID = "example";
-        SCString example_name = "Example";
-        SCString example_suffix = "";
-        SCInt example_min = 0;
-        SCInt example_max = 0;
-        SCInt example_default = 0;
-        */
-
-        // example (choice)
-        /*
-        SCString example_id = "example";
-        SCString example_name = "Example";
-        juce::StringArray example_choices = {
-            "Choice A",
-            "Choice B",
-            "Choice C",
-        };
-        SCInt example_default = 0;
-        */
     };
 
     pFloat inGainSmooth;

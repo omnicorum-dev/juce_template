@@ -1,22 +1,15 @@
-/*
-  ==============================================================================
-
-    ParameterLayout.h
-    Created: 3 Mar 2026 3:16:38pm
-    Author:  Nico Russo
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include "juce_audio_processors/juce_audio_processors.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
+
 #define SCFloat static constexpr float
 #define SCInt static constexpr int
 #define SCBool static constexpr bool
 #define SCString static constexpr const char *
 #define SCStringArr inline static const juce::StringArray
+
+namespace omni {
 
 typedef juce::AudioProcessorValueTreeState APVTS;
 
@@ -203,3 +196,5 @@ class pInt {
     double                              fs;
     int                                 blockSize;
 };
+
+} // namespace omni

@@ -12,6 +12,8 @@
 
 #include "juce_audio_basics/juce_audio_basics.h"
 
+namespace omni {
+
 class MidiCursor {
   public:
     MidiCursor(const juce::MidiBuffer &midi)
@@ -27,3 +29,5 @@ class MidiCursor {
     juce::MidiBufferIterator current;
     juce::MidiBufferIterator end;
 };
+
+} // namespace omni
