@@ -16,15 +16,15 @@ to run the CMake configure step. (I usually use Ninja.
 XCode and MSVC won't generate the clang compile commands!)
 
 ```sh
-cmake -B build -G Ninja
+cmake --preset config
 ```
 
 ## Building (on my machine, at least)
 
 ```sh
-cmake --build build --config Debug
+cmake --build --prest debug
 ```
 
 ```sh
-cmake --build build --config Release
+cmake --build --preset release
 ```
