@@ -1,5 +1,6 @@
 #pragma once
 
+#include "juce_audio_basics/juce_audio_basics.h"
 #include "parameter_layout.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -48,6 +49,21 @@ class Processor final : public juce::AudioProcessor {
 #else
         return false;
 #endif
+    }
+
+    bool isBusesLayoutSupported(const BusesLayout &layouts) const override {
+        if (layouts.getMainOutputChannelSet() !=
+                juce::AudioChannelSet::stereo() &&
+            layouts.getMainOutputChannelSet() !=
+                juce::AudioChannelSet::mono()) {
+            return false;
+        }
+#if !JucePlugin_IsSynth
+        if (layouts.getMainOutputChannelSet() !=
+            layouts.getMainInputChannelSet())
+            return false;
+#endif
+        return true;
     }
 
     /* ======================================================== */

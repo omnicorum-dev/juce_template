@@ -88,20 +88,14 @@ class pFloat {
 
     bool changed() { return std::abs(rawValue - prevValue) > 0.001f; }
 
-    float getRawAndUpdate() {
-        prevValue = rawValue;
-        rawValue  = apvts->getRawParameterValue(ID)->load();
-        smoothValue.setTargetValue(rawValue);
-        return rawValue;
-    }
-
-    void update() {
+    float update() {
         prevValue    = rawValue;
         float newRaw = apvts->getRawParameterValue(ID)->load();
         if (newRaw != rawValue) {
             rawValue = newRaw;
             smoothValue.setTargetValue(rawValue);
         }
+        return newRaw;
     }
 
     float getNextValue(int skip = 0) {
@@ -118,8 +112,8 @@ class pFloat {
     juce::AudioProcessorValueTreeState *apvts;
     juce::SmoothedValue<float>          smoothValue;
     const char                         *ID;
-    float                               rawValue;
-    float                               prevValue;
+    float                               rawValue  = 0;
+    float                               prevValue = 0;
     double                              fs;
     double                              smoothRate;
     int                                 blockSize;
@@ -155,8 +149,8 @@ class pBool {
     juce::AudioProcessorValueTreeState *apvts;
     std::atomic<float>                 *param = nullptr;
     const char                         *ID;
-    bool                                rawValue;
-    bool                                prevValue;
+    bool                                rawValue  = false;
+    bool                                prevValue = false;
     double                              fs;
     int                                 blockSize;
 };
@@ -191,8 +185,8 @@ class pInt {
     juce::AudioProcessorValueTreeState *apvts;
     std::atomic<float>                 *param = nullptr;
     const char                         *ID;
-    int                                 rawValue;
-    int                                 prevValue;
+    int                                 rawValue  = 0;
+    int                                 prevValue = 0;
     double                              fs;
     int                                 blockSize;
 };

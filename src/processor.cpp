@@ -87,14 +87,10 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
         buffer.clear((int)i, 0, buffer.getNumSamples());
     }
 
-    bool bypass = bypassParam.getNextValue();
-
-    if (bypass)
-        return;
-
     /* ======================================================== */
 
     // Read control-rate parameters
+    bool bypass = bypassParam.getNextValue();
 
     /* ======================================================== */
 
@@ -102,6 +98,11 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     outGainSmooth.update();
     inGainSmooth.update();
     mixSmooth.update();
+
+    /* ======================================================== */
+
+    if (bypass)
+        return;
 
     /* ======================================================== */
 

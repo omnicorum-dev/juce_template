@@ -2,6 +2,7 @@
 
 #include "filter.h"
 #include <algorithm>
+#include <cmath>
 
 namespace omni {
 
@@ -90,7 +91,7 @@ class SoftClipper : public Distortion {
 
         if (abs <= threshold_linear - halfKnee) {
             return xn;
-        } else if (abs <= threshold_linear - halfKnee) {
+        } else if (abs <= threshold_linear + halfKnee) {
             double excess = abs - (threshold_linear - halfKnee);
             return sign * (abs - (excess * excess) / (2 * knee_linear));
         } else {

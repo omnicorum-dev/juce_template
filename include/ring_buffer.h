@@ -6,6 +6,7 @@
 namespace omni {
 
 template <int max_buffer_size> class RingBuffer {
+  public:
     void push(double xn) {
         buffer[write_head] = xn;
         write_head         = wrap(write_head + 1);
