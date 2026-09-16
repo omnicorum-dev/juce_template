@@ -2,13 +2,21 @@
 
 #include <cmath>
 
+/// @file
+/// A phase-accumulator oscillator driven by an arbitrary generator
+/// function (defaults to sine), with phase/frequency modulation inputs.
+
 namespace omni {
 
+/// Output range for BasicOscillator::processSample.
 enum class Polarity {
-    UNIPOLAR,
-    BIPOLAR,
+    UNIPOLAR, ///< Output in [0, 1]
+    BIPOLAR,  /// Output in [-1, 1] (the generator function's native range)
 };
 
+/// Phase-accumulator oscillator. Not band-limited -- fine for sine via
+/// the default generator, but a naive (non-PolyBLEP) generator for
+/// anything with sharp edges (saw/square/pulse) will alias.
 class BasicOscillator {
   public:
     void prepare(double _sample_rate, int _buffer_size) {
@@ -17,12 +25,13 @@ class BasicOscillator {
         reset();
     }
 
-    // The generator function receives phase in the range [0, 1)
-    // (defaults to a sine wave)
+    /// Sets the waveform generator, called each sample with phase in
+    /// [0, 1). Defaults to a sine wave.
     void setGeneratorFunction(double (*function)(double)) {
         generatorFunction = function;
     }
 
+    /// Recomputes phase_increment from frequency/sample rate; zeros phase.
     void reset() {
         if (fs > 0.f) {
             phase_increment = frequency / fs;
@@ -30,6 +39,7 @@ class BasicOscillator {
         phase = 0;
     }
 
+    /// Sets oscillator frequency in Hz.
     void setFrequency(double hz) {
         frequency = hz;
         if (fs > 0)
@@ -38,8 +48,16 @@ class BasicOscillator {
 
     void setPolarity(Polarity _polarity) { polarity = _polarity; }
 
+    /// Constant phase offset in [0, 1) added at generation time.
     void setPhaseOffset(double offset) { phase_offset = offset; }
 
+    /// Advances the oscillator by one sample and returns the
+    /// (polarity-adjusted) output.
+    /// @param phase_mod     Added to phase for this sample only (not
+    ///                      accumulated).
+    /// @param frequency_mod Added to frequency for this sample's phase
+    ///                      advance only; if 0, the precomputed
+    ///                      phase_increment is used instead.
     double processSample(double phase_mod = 0.0, double frequency_mod = 0.0) {
         double sample = generateSample(phase + phase_mod);
 
@@ -52,7 +70,7 @@ class BasicOscillator {
     }
 
     double getPhase() { return phase; }
-    double getFreqyency() { return frequency; }
+    double getFrequency() { return frequency; }
 
   protected:
     double generateSample(double p) const {

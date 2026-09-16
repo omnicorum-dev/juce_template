@@ -4,10 +4,19 @@
 #include <algorithm>
 #include <cmath>
 
+/// @file
+/// Waveshaping distortion: a common drive/bias/DC-block front end
+/// (Distortion) plus a set of concrete shaper curves.
+
 namespace omni {
 
+/// Base class for a waveshaper: applies drive and bias before calling
+/// the derived class's distortion(), then optionally DC-blocks the
+/// result (waveshaping is often asymmetric and pushes in a DC offset).
 class Distortion {
   public:
+    /// The shaping curve, in terms of the drive/bias-adjusted input.
+    /// Implement this in a derived class.
     virtual double distortion(double xn) = 0;
 
     double processSample(double xn) {
@@ -19,8 +28,13 @@ class Distortion {
         return yn;
     }
 
+    /// Linear input gain applied before shaping
     void setDrive(double _driveMag) { driveMag = _driveMag; }
+
+    /// DC offset added before shaping for asymmetric drive
     void setBias(double _bias) { bias = _bias; }
+
+    /// Enable/disable the post-shaping DC blocker
     void useDcBlock(bool _dcBlock) { dcBlock = _dcBlock; }
 
   protected:
@@ -33,6 +47,7 @@ class Distortion {
 
 /* ======================================================== */
 
+/// Full-wave rectifier: |xn|.
 class RectifierFull : public Distortion {
   public:
     double distortion(double xn) override {
@@ -42,6 +57,7 @@ class RectifierFull : public Distortion {
     }
 };
 
+/// Half-wave rectifier: xn for xn>=0, else 0.
 class RectifierHalf : public Distortion {
   public:
     double distortion(double xn) override {
@@ -51,21 +67,27 @@ class RectifierHalf : public Distortion {
     }
 };
 
+/// Sine-fold waveshaper: sin(xn * 2/pi). Folds rather than clips, so it
+/// can add harmonic content well past unity drive instead of flattening.
 class SineFold : public Distortion {
   public:
     double distortion(double xn) override { return std::sin(M_2_PI * xn); }
 };
 
+/// Hard clip to [-1, 1].
 class HardClip : public Distortion {
   public:
     double distortion(double xn) override { return std::clamp(xn, -1., 1.); }
 };
 
+/// Hard clip to [-1, 1].
 class TanhShaper : public Distortion {
   public:
     double distortion(double xn) override { return std::tanh(xn); }
 };
 
+/// Soft clipper with an explicit threshold and a quadratic (parabolic)
+/// knee, settable in either linear amplitude or dB.
 class SoftClipper : public Distortion {
   public:
     void setThreshold_linear(double threshold) { threshold_linear = threshold; }

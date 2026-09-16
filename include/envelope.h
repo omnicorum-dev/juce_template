@@ -3,9 +3,20 @@
 #include <algorithm>
 #include <cmath>
 
+/// @file
+/// AHDSR (Attack-Hold-Decay-Sustain-Release) envelope generator with
+/// selectable linear or exponential ramp shape.
+
+namespace omni {
+
+/// Attack-Hold-Decay-Sustain-Release envelope generator. Call update()
+/// once per sample to advance and read the current level.
 class AHDSR {
   public:
+    /// The envelope's current segment. Idle = fully released (level 0).
     enum class Stage { Idle, Attack, Hold, Decay, Sustain, Release };
+
+    /// @note "time" means something different per shape -- see setParameters().
     enum class RampShape { Linear, Exponential };
 
     void prepare(double _sample_rate, int _buffer_size) {
@@ -13,8 +24,17 @@ class AHDSR {
         buffer_size = _buffer_size;
     }
 
+    /// Applies to attack, decay, and release alike.
     void setRampShape(RampShape shape) { ramp_shape = shape; }
 
+    /// @param attack_s    Attack time, seconds (floored to 0.1ms).
+    /// @param hold_s      Time held at full level after attack completes,
+    ///                    seconds.
+    /// @param decay_s     Decay time, seconds (floored to 0.1ms).
+    /// @param sustain_amt Sustain level, 0-1 (clamped).
+    /// @param release_s   Release time, seconds (floored to 0.1ms).
+    /// @note for Exponential shape, "time" is the time to close ~99% of
+    ///       the segment's span, not the time to fully arrive.
     void setParameters(double attack_s, double hold_s, double decay_s,
                        double sustain_amt, double release_s) {
         attack_time   = std::max(attack_s, 0.0001);
@@ -24,12 +44,15 @@ class AHDSR {
         release_time  = std::max(release_s, 0.0001);
     }
 
+    /// Triggers Attack. Ramps from the current level rather than
+    /// jumping to 0 first, so retriggering mid-envelope doesn't click.
     void noteOn() {
         stage = Stage::Attack;
         // ramp from wherever we are instead of jumping to 0 before ramping
         attack_start_level = current_level;
     }
 
+    /// Triggers Release from the current level (no-op if already Idle).
     void noteOff() {
         if (stage != Stage::Idle) {
             stage               = Stage::Release;
@@ -37,9 +60,10 @@ class AHDSR {
         }
     }
 
+    /// False once fully released.
     bool isActive() const { return stage != Stage::Idle; }
 
-    // updates envelope and returns the current envelope level (0.0 - 1.0)
+    /// Advances the envelope by one sample and returns the new level (0-1).
     double update() {
         switch (stage) {
         case Stage::Idle:
@@ -131,3 +155,5 @@ class AHDSR {
     RampShape ramp_shape = RampShape::Linear;
     Stage     stage      = Stage::Idle;
 };
+
+} // namespace omni

@@ -3,10 +3,19 @@
 #include <array>
 #include <cstddef>
 
+/// @file
+/// Fixed-capacity circular sample buffer with delay-style reads
+/// (including linear-interpolated fractional reads) -- the storage
+/// primitive behind DelayLine.
+
 namespace omni {
 
+/// Fixed-capacity circular buffer of `double` samples, indexed by delay
+/// (samples ago) rather than by absolute position.
+/// @tparam max_buffer_size Capacity in samples, fixed at compile time.
 template <int max_buffer_size> class RingBuffer {
   public:
+    /// Writes one sample, overwriting the oldest once full
     void push(double xn) {
         buffer[write_head] = xn;
         write_head         = wrap(write_head + 1);
@@ -14,16 +23,23 @@ template <int max_buffer_size> class RingBuffer {
             ++size;
     }
 
+    /// Writes `num_samples` samples in order
     void push(const double *data, int num_samples) {
         for (int i = 0; i < num_samples; ++i)
             push(data[i]);
     }
 
+    /// Reads the sample `delay_samples` ago (0 = most recently pushed)
     double read(int delay_samples = 0) const {
         int index = wrap(write_head - 1 - delay_samples);
         return buffer[index];
     }
 
+    /// Linearly-interpolated read at a fractional delay in samples
+    /// @note the wrap() calls on d0/d0+1 here are redundant with the
+    ///       wrapping read() already does internally -- harmless since
+    ///       wrap() is idempotent, but worth knowing if you're tracing
+    ///       through this.
     double readFractional_linear(double delay_samples) {
         int    d0   = (int)delay_samples;
         double frac = delay_samples - d0;
@@ -32,6 +48,7 @@ template <int max_buffer_size> class RingBuffer {
         return s0 + frac * (s1 - s0);
     }
 
+    /// Zeros the buffer and resets read/write position
     void clear() {
         write_head = 0;
         size       = 0;

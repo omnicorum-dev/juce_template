@@ -4,11 +4,18 @@
 #include <cmath>
 #include <cstdint>
 
+/// @file
+/// MIDI constants and note/velocity/pitch-bend conversion helpers,
+/// including a compile-time MIDI-note-to-frequency table.
+
 namespace omni {
 
-constexpr double A4       = 440.0;
-constexpr double SEMITONE = 1.0594630943592952646;
+constexpr double A4 = 440.0; ///< Reference pitch for A4, in Hz.
+constexpr double SEMITONE =
+    1.0594630943592952646; ///< Frequency ratio of one semitone (2^(1/12)).
 
+/// @name MIDI value ranges
+/// @{
 constexpr int MIDI_MIN_NOTE   = 0;
 constexpr int MIDI_MAX_NOTE   = 127;
 constexpr int MIDI_NOTE_COUNT = 128;
@@ -25,7 +32,9 @@ constexpr int MIDI_MAX_CHANNEL = 16;
 constexpr int MIDI_MIN_PITCHBEND    = 0;
 constexpr int MIDI_MAX_PITCHBEND    = 16383;
 constexpr int MIDI_CENTER_PITCHBEND = 8192;
+/// @}
 
+/// Status byte (high nibble) for common channel voice messages.
 enum class MessageType : uint8_t {
     NoteOff           = 0x80,
     NoteOn            = 0x90,
@@ -36,6 +45,8 @@ enum class MessageType : uint8_t {
     PitchBend         = 0xE0,
 };
 
+/// Pitch class (note name mod 12). Enharmonic pairs (Cs/Db etc.) share
+/// the same numeric value -- both spellings are valid for the same class.
 enum class PitchClass {
     C  = 0,
     Cs = 1,
@@ -56,10 +67,15 @@ enum class PitchClass {
     B  = 11
 };
 
+/// Exact (non-table) note-to-frequency conversion via pow(2,x) -- prefer
+/// midiNoteToFreq() for a precomputed, cheaper lookup.
 constexpr double midiNoteToFreqExact(int note) {
     return A4 * std::pow(2, (note - 69) / 12.0);
 }
 
+/// Compile-time table of all 128 MIDI note frequencies, built outward
+/// from A4 (note 69) by repeated multiplication/division by SEMITONE,
+/// rather than calling pow() per note.
 constexpr auto midiFrequencies = [] {
     std::array<double, MIDI_NOTE_COUNT> frequencies{};
 
@@ -74,16 +90,22 @@ constexpr auto midiFrequencies = [] {
     return frequencies;
 }();
 
+/// Table lookup. @pre note in [0, 127].
 constexpr double midiNoteToFreq(int note) {
     return midiFrequencies[(size_t)note];
 }
 
+/// MIDI note -> octave, using note 60 (middle C) = C4.
 constexpr int midiNoteToOctave(int note) { return note / 12 - 1; }
 
 constexpr PitchClass midiNoteToPitchClass(int note) {
     return (PitchClass)(note % 12);
 }
 
+/// @name Normalization helpers
+/// Convert between raw MIDI ranges (0-127, or the 14-bit pitch-bend
+/// range) and normalized [0,1] (or [-1,1] for pitch bend) doubles.
+/// @{
 constexpr double normalizeVelocity(int velocity) { return velocity / 127.0; }
 
 constexpr int denormalizeVelocity(double velocity) {
@@ -98,4 +120,6 @@ constexpr double normalizePitchBend(int pitchbend) {
     return (pitchbend - (double)MIDI_CENTER_PITCHBEND) /
            (double)MIDI_CENTER_PITCHBEND;
 }
+/// @}
+
 } // namespace omni
