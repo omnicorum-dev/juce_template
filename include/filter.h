@@ -3,19 +3,31 @@
 #include <array>
 #include <cmath>
 
+/// @file
+/// Biquad-family and state-variable filters: RBJ cookbook EQ types,
+/// a Linkwitz-Riley crossover pair, a cascaded Butterworth, a DC
+/// blocker, a TPT state-variable filter, and a one-pole smoother/filter.
+
 namespace omni {
 
+/// 2*pi; used to convert Hz to angular frequency (w0 = twoPi * f0 / fs).
 constexpr double twoPi = 2.0 * M_PI;
 
+/// Base class for a direct-form-I biquad. Holds the shared state,
+/// parameter setters, and difference-equation processing.
+/// Derived classes only need to fill in updateCoeffs()
 class Biquad {
   public:
     Biquad() { reset(); }
 
+    /// @param _sample_rate Sample rate in Hz
+    /// @param _buffer_size Host block size
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
         buffer_size = _buffer_size;
     }
 
+    /// Resets f0/Q/A and coeffs to a pass-through state.
     void reset() {
         f0    = 1000.f;
         Q     = 0.7071f;
@@ -30,21 +42,27 @@ class Biquad {
         a2    = 0;
     }
 
+    /// Set cutoff/center frequency in Hz
     void setFreq(float freq) {
         f0 = freq;
         updateCoeffs();
     }
 
+    /// Set resonance/bandwidth
     void setQ(float q) {
         Q = q;
         updateCoeffs();
     }
 
+    /// Set shelf/peak LINEAR gain.
+    /// Used only in Bell, Highshelf, and Lowshelf variants
     void setA(float a) {
         A = a;
         updateCoeffs();
     }
 
+    /// Set freq, Q, and A together to prevent repeated
+    /// coefficient calculation
     void setAll(float freq, float q, float a) {
         f0 = freq;
         Q  = q;
@@ -52,12 +70,12 @@ class Biquad {
         updateCoeffs();
     }
 
+    /// Process one sample through the direct-form-I difference equation.
+    /// Coefficients are pre-divided by a0 so no division happens here.
     double processSample(double xn) {
         double feedforward = (b0 * xn) + (b1 * xnm1) + (b2 * xnm2);
         double feedback    = (a1 * ynm1) + (a2 * ynm2);
-        // double yn       = (1.0 / a0) * (feedforward - feedback);
-        // coefficients are pre-divided by a0
-        double yn = feedforward - feedback;
+        double yn          = feedforward - feedback;
 
         xnm2 = xnm1;
         xnm1 = xn;
@@ -80,21 +98,25 @@ class Biquad {
     double xnm1, xnm2, ynm1, ynm2;
 };
 
+/// Selects the response shape for RBJ, Butterworth, and SVF filters
 enum class FilterType {
-    LOWPASS = 0,
-    HIGHPASS,
-    BANDPASS_SKIRT,
-    BANDPASS_PEAK,
-    NOTCH,
-    BELL,
-    HIGHSHELF,
-    LOWSHELF,
-    ALLPASS,
+    LOWPASS = 0,    ///< -12dB/oct lowpass (2-pole)
+    HIGHPASS,       ///< -12dB/oct highpass (2-pole)
+    BANDPASS_SKIRT, ///< Bandpass with constant skirt gain (peak gain = Q)
+    BANDPASS_PEAK,  ///< Bandpass with constant 0dB peak gain
+    NOTCH,          ///< Notch / band-reject
+    BELL,           ///< Peaking EQ, boost/cut around f0 (uses A)
+    HIGHSHELF,      ///< High shelf (uses A)
+    LOWSHELF,       ///< Low shelf (uses A)
+    ALLPASS,        ///< All-pass -- flat magnitude, phase shift only
 };
 
-// https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
+/// RBJ (Robert Bristow-Johnson) audio EQ cookbook biquad
+/// One coefficient set per FilterType
+/// @see https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
 class RBJ : public Biquad {
   public:
+    /// Selects the response and recomputes coefficients
     void setFilterType(FilterType new_filter_type) {
         filter_type = new_filter_type;
         updateCoeffs();
@@ -204,6 +226,10 @@ class RBJ : public Biquad {
     FilterType filter_type = FilterType::LOWPASS;
 };
 
+/// 4th-order Linkwitz-Riley filter: two cascaded Q=0.7071 RBJ biquads,
+/// giving -24dB/oct with flat summed magnitude at the crossover point --
+/// the standard choice for a crossover network. Only LOWPASS/HIGHPASS
+/// are valid; anything else is coerced to LOWPASS.
 class LR4 {
   public:
     void prepare(float _sample_rate, int _buffer_size) {
@@ -214,6 +240,7 @@ class LR4 {
         stage2.setQ(0.7071f);
     }
 
+    /// LOWPASS or HIGHPASS only; anything else reverts to LOWPASS.
     void setFilterType(FilterType new_filter_type) {
         if (new_filter_type != FilterType::LOWPASS &&
             new_filter_type != FilterType::HIGHPASS) {
@@ -224,6 +251,7 @@ class LR4 {
         stage2.setFilterType(new_filter_type);
     }
 
+    /// Crossover frequency in Hz.
     void setFreq(float new_freq) {
         stage1.setFreq(new_freq);
         stage2.setFreq(new_freq);
@@ -238,6 +266,8 @@ class LR4 {
     RBJ stage1, stage2;
 };
 
+/// One-pole DC blocker (leaky-integrator highpass) -- removes DC offset
+/// and subsonic content without coloring the audible band.
 class DCBlocker {
   public:
     double processSample(double xn) {
@@ -250,12 +280,17 @@ class DCBlocker {
     }
 
   private:
+    /// Pole radius; closer to 1 = lower cutoff.
     static constexpr double R = 0.9999;
 
     double xnm1 = 0.f;
     double ynm1 = 0.f;
 };
 
+/// Cascaded-biquad Butterworth filter of order 2*max_stages, built from
+/// per-stage Q values derived from the maximally-flat pole layout.
+/// @tparam max_stages Maximum number of cascaded 2nd-order stages
+///                     (max achievable order = 2 * max_stages).
 template <int max_stages> class Butterworth {
   public:
     void prepare(double _sample_rate, int _buffer_size) {
@@ -272,6 +307,7 @@ template <int max_stages> class Butterworth {
         return yn;
     }
 
+    /// LOWPASS or HIGHPASS only. Anything else reverts to LOWPASS
     void setFilterType(FilterType type) {
         if (type != FilterType::LOWPASS && type != FilterType::HIGHPASS) {
             type = FilterType::LOWPASS;
@@ -282,6 +318,7 @@ template <int max_stages> class Butterworth {
         updateCoeffs();
     }
 
+    /// Sets the active stage count, clamped to [1, max_stages]
     void setStages(int _stages) {
         num_stages = std::max(1, std::min(_stages, (int)max_stages));
         for (int i = 0; i < num_stages; ++i)
@@ -289,16 +326,20 @@ template <int max_stages> class Butterworth {
         updateCoeffs();
     }
 
+    /// Cutoff frequency in Hz, shared by all stages
     void setFreq(float freq) {
         target_freq = freq;
         updateCoeffs();
     }
 
+    /// Overall resonance, applied via the last stage's Q correction
+    /// A Q of 0.7071 results in the classic high-order Butterworth
     void setQ(float q) {
         resonance_q = std::max(q, 0.001f);
         updateCoeffs();
     }
 
+    /// Sets freq and Q together
     void setFreqAndQ(float freq, float q) {
         target_freq = freq;
         resonance_q = std::max(q, 0.001f);
@@ -310,6 +351,8 @@ template <int max_stages> class Butterworth {
     float getStageQ(int i) const { return stage_q[i]; }
 
   protected:
+    /// Recomputes each stage's frequency/Q from num_stages, target_freq,
+    /// and resonance_q (maximally-flat Butterworth pole placement).
     void updateCoeffs() {
         if (sample_rate <= 0.f || num_stages <= 0)
             return;
@@ -352,7 +395,11 @@ template <int max_stages> class Butterworth {
     std::array<float, max_stages> stage_q{};
 };
 
-// https://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+/// State-variable filter using Andy Simper/Cytomic's TPT (topology-
+/// preserving transform) formulation. Outputs every FilterType from one
+/// shared pair of integrator states and stays frequency-
+/// accurate under fast cutoff modulation.
+/// @see https://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 class SVF {
   public:
     SVF() { clear(); }
@@ -363,6 +410,7 @@ class SVF {
         updateCoeffs();
     }
 
+    /// Processes one sample and advances the states
     double processSample(double xn) {
         double v3 = xn - ic2eq;
         double v1 = a1 * ic1eq + a2 * v3;
@@ -374,21 +422,25 @@ class SVF {
         return (m0 * xn) + (m1 * v1) + (m2 * v2);
     }
 
+    /// Set cutoff/center frequency in Hz
     void setFreq(float freq) {
         f0 = freq;
         updateCoeffs();
     }
 
+    /// Set resonance/bandwidth
     void setQ(float q) {
         Q = q;
         updateCoeffs();
     }
 
+    /// Sets shelf/peak LINEAR gain (Bell/Highshelf/Lowshelf only)
     void setA(float a) {
         A = a;
         updateCoeffs();
     }
 
+    /// Sets freq, Q, and A together to prevent repeated coeff calculation
     void setAll(float freq, float q, float a) {
         f0 = freq;
         Q  = q;
@@ -396,11 +448,13 @@ class SVF {
         updateCoeffs();
     }
 
+    /// Selects the response and recalculated coefficients
     void setFilterType(FilterType new_filter_type) {
         filter_type = new_filter_type;
         updateCoeffs();
     }
 
+    /// Zeros integrator state to default to passthrough
     void clear() {
         ic1eq = 0;
         ic2eq = 0;
@@ -414,6 +468,8 @@ class SVF {
     }
 
   protected:
+    /// Recomputes a1..a3 and the m0..m2 output mix for the current
+    /// filter_type/f0/Q/A, via prewarped g = tan(pi*f0/fs).
     void updateCoeffs() {
         double g = tan(M_PI * f0 / fs);
         double k = filter_type == FilterType::BELL ? 1. / (Q * A) : 1. / Q;
@@ -488,9 +544,15 @@ class SVF {
     double m0, m1, m2;
 };
 
+/// One-pole filter/smoother. Can act as an actual LOWPASS/HIGHPASS
+/// filter via setCutoff(), or as a smoother/envelope-follower element
+/// via setTimeConstant() -- see each method for which to use when.
 class OnePole {
   public:
-    enum class Type { LOWPASS, HIGHPASS };
+    enum class Type {
+        LOWPASS, ///< Standard one-pole lowpass
+        HIGHPASS ///< Complement of the lowpass (xn - lowpass)
+    };
 
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
@@ -502,23 +564,25 @@ class OnePole {
         return type == Type::LOWPASS ? z : xn - z;
     }
 
+    /// Selects LOWPASS or HIGHPASS
     void setType(Type new_type) { type = new_type; }
 
+    /// Frequency-based form -- use when acting as an actual filter
     void setCutoff(double freq) {
         f0 = freq;
         b1 = std::exp(-twoPi * f0 / fs);
         a0 = 1. - b1;
     }
 
-    // used when acting as a smoother/envelope follower
-    // instead of a filter.
-    // 'samples' is how many samples it should take
-    // to reach -63% of a step change.
+    /// Time-constant form -- use when this is acting as a smoother or
+    /// envelope-follower element instead of a filter. `samples` is how
+    /// long it takes to reach ~63% (1 - 1/e) of a step change.
     void setTimeConstant(double samples) {
         b1 = std::exp(-1.0 / samples);
         a0 = 1.0 - b1;
     }
 
+    /// Zeros filter state
     void reset() { z = 0.; }
 
   private:
