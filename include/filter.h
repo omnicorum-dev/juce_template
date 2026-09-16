@@ -349,4 +349,115 @@ template <int max_stages> class Butterworth {
     std::array<float, max_stages> stage_q{};
 };
 
+class SVF {
+  public:
+    SVF() { clear(); }
+
+    void prepare(double _sample_rate, int _buffer_size) {
+        fs          = _sample_rate;
+        buffer_size = _buffer_size;
+    }
+
+    double processSample(double xn) {
+        double v3 = xn - ic2eq;
+        double v1 = a1 * ic1eq + a2 * v3;
+        double v2 = ic2eq + a2 * ic1eq + a3 * v3;
+
+        ic1eq = 2 * v1 - ic1eq;
+        ic2eq = 2 * v2 - ic2eq;
+
+        return (m0 * xn) + (m1 * v1) + (m2 * v2);
+    }
+
+    void setFilterType(FilterType new_filter_type) {
+        filter_type = new_filter_type;
+        updateCoeffs();
+    }
+
+    void updateCoeffs() {
+        double g = tan(M_PI * f0 / fs);
+        double k = filter_type == FilterType::BELL ? 1. / (Q * A) : 1. / Q;
+
+        a1 = 1. / (1. + g * (g + k));
+        a2 = g * a1;
+        a3 = g * a2;
+
+        switch (filter_type) {
+        case FilterType::LOWPASS:
+            m0 = 0;
+            m1 = 0;
+            m2 = 1;
+            break;
+        case FilterType::HIGHPASS:
+            m0 = 1;
+            m1 = -k;
+            m2 = -1;
+            break;
+        case FilterType::BANDPASS_SKIRT:
+            m0 = 0;
+            m1 = 1;
+            m2 = 0;
+            break;
+        case FilterType::BANDPASS_PEAK:
+            m0 = 1;
+            m1 = -k;
+            m2 = -2;
+            break;
+        case FilterType::NOTCH:
+            m0 = 1;
+            m1 = -k;
+            m2 = 0;
+            break;
+        case FilterType::BELL:
+            m0 = 1;
+            m1 = k * (A * A - 1);
+            m2 = 0;
+            break;
+        case FilterType::HIGHSHELF:
+            m0 = A * A;
+            m1 = k * (1 - A) * A;
+            m2 = (1 - A * A);
+            break;
+        case FilterType::LOWSHELF:
+            m0 = 1.;
+            m1 = k * (A - 1.);
+            m2 = A * A - 1.;
+            break;
+        case FilterType::ALLPASS:
+            m0 = 1;
+            m1 = -2 * k;
+            m2 = 0;
+            break;
+        }
+    }
+
+    void clear() {
+        ic1eq = 0;
+        ic2eq = 0;
+
+        a1 = 0;
+        a2 = 0;
+        a3 = 0;
+        m0 = 0;
+        m1 = 0;
+        m2 = 0;
+    }
+
+  private:
+    double fs          = 48000;
+    int    buffer_size = 512;
+
+    FilterType filter_type;
+
+    double f0 = 1000.;
+    double Q  = 0.7071;
+    double A  = 1.;
+
+    double ic1eq = 0;
+    double ic2eq = 0;
+
+    double a1, a2, a3;
+    double m0, m1, m2;
+};
+
 } // namespace omni
