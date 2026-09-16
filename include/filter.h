@@ -91,6 +91,7 @@ enum class FilterType {
     ALLPASS,
 };
 
+// https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
 class RBJ : public Biquad {
   public:
     void setFilterType(FilterType new_filter_type) {
@@ -349,6 +350,7 @@ template <int max_stages> class Butterworth {
     std::array<float, max_stages> stage_q{};
 };
 
+// https://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 class SVF {
   public:
     SVF() { clear(); }
@@ -481,6 +483,51 @@ class SVF {
 
     double a1, a2, a3;
     double m0, m1, m2;
+};
+
+class OnePole {
+  public:
+    enum class Type { LOWPASS, HIGHPASS };
+
+    void prepare(double _sample_rate, int _buffer_size) {
+        fs          = _sample_rate;
+        buffer_size = _buffer_size;
+    }
+
+    double processSample(double xn) {
+        z = a0 * xn + b1 * z;
+        return type == Type::LOWPASS ? z : xn - z;
+    }
+
+    void setType(Type new_type) { type = new_type; }
+
+    void setCutoff(double freq) {
+        f0 = freq;
+        b1 = std::exp(-twoPi * f0 / fs);
+        a0 = 1. - b1;
+    }
+
+    // used when acting as a smoother/envelope follower
+    // instead of a filter.
+    // 'samples' is how many samples it should take
+    // to reach -63% of a step change.
+    void setTimeConstant(double samples) {
+        b1 = std::exp(-1.0 / samples);
+        a0 = 1.0 - b1;
+    }
+
+    void reset() { z = 0.; }
+
+  private:
+    double fs          = 48000;
+    int    buffer_size = 512;
+
+    Type type = Type::LOWPASS;
+
+    double f0 = 1000.;
+    double a0 = 1.;
+    double b1 = 0.;
+    double z  = 0.;
 };
 
 } // namespace omni
