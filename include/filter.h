@@ -9,8 +9,6 @@ constexpr double twoPi = 2.0 * M_PI;
 
 class Biquad {
   public:
-    virtual void updateCoeffs() = 0;
-
     Biquad() { reset(); }
 
     void prepare(double _sample_rate, int _buffer_size) {
@@ -70,6 +68,9 @@ class Biquad {
     }
 
   protected:
+    virtual void updateCoeffs() = 0;
+
+  protected:
     double fs          = 48000;
     int    buffer_size = 512;
 
@@ -99,6 +100,7 @@ class RBJ : public Biquad {
         updateCoeffs();
     }
 
+  protected:
     void updateCoeffs() override {
         w0           = twoPi * f0 / fs;
         alpha        = sin(w0) / (2 * Q);
@@ -399,6 +401,19 @@ class SVF {
         updateCoeffs();
     }
 
+    void clear() {
+        ic1eq = 0;
+        ic2eq = 0;
+
+        a1 = 0;
+        a2 = 0;
+        a3 = 0;
+        m0 = 1; // passthrough
+        m1 = 0;
+        m2 = 0;
+    }
+
+  protected:
     void updateCoeffs() {
         double g = tan(M_PI * f0 / fs);
         double k = filter_type == FilterType::BELL ? 1. / (Q * A) : 1. / Q;
@@ -454,18 +469,6 @@ class SVF {
             m2 = 0;
             break;
         }
-    }
-
-    void clear() {
-        ic1eq = 0;
-        ic2eq = 0;
-
-        a1 = 0;
-        a2 = 0;
-        a3 = 0;
-        m0 = 1; // passthrough
-        m1 = 0;
-        m2 = 0;
     }
 
   private:

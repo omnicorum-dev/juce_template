@@ -51,7 +51,7 @@ template <int max_buffer_size> class RingBuffer {
     }
 
   private:
-    std::array<double, max_buffer_size> buffer;
+    std::array<double, max_buffer_size> buffer{};
 
     int capacity   = max_buffer_size;
     int write_head = 0;
