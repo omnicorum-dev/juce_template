@@ -57,7 +57,9 @@ class Biquad {
     double processSample(double xn) {
         double feedforward = (b0 * xn) + (b1 * xnm1) + (b2 * xnm2);
         double feedback    = (a1 * ynm1) + (a2 * ynm2);
-        double yn          = (1.0 / a0) * (feedforward - feedback);
+        // double yn       = (1.0 / a0) * (feedforward - feedback);
+        // coefficients are pre-divided by a0
+        double yn = feedforward - feedback;
 
         xnm2 = xnm1;
         xnm1 = xn;
@@ -187,6 +189,12 @@ class RBJ : public Biquad {
         default:
             break;
         }
+
+        b0 /= a0;
+        b1 /= a0;
+        b2 /= a0;
+        a1 /= a0;
+        a2 /= a0;
     }
 
   private:
