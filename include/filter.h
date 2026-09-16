@@ -356,6 +356,7 @@ class SVF {
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
         buffer_size = _buffer_size;
+        updateCoeffs();
     }
 
     double processSample(double xn) {
@@ -367,6 +368,28 @@ class SVF {
         ic2eq = 2 * v2 - ic2eq;
 
         return (m0 * xn) + (m1 * v1) + (m2 * v2);
+    }
+
+    void setFreq(float freq) {
+        f0 = freq;
+        updateCoeffs();
+    }
+
+    void setQ(float q) {
+        Q = q;
+        updateCoeffs();
+    }
+
+    void setA(float a) {
+        A = a;
+        updateCoeffs();
+    }
+
+    void setAll(float freq, float q, float a) {
+        f0 = freq;
+        Q  = q;
+        A  = a;
+        updateCoeffs();
     }
 
     void setFilterType(FilterType new_filter_type) {
@@ -438,7 +461,7 @@ class SVF {
         a1 = 0;
         a2 = 0;
         a3 = 0;
-        m0 = 0;
+        m0 = 1; // passthrough
         m1 = 0;
         m2 = 0;
     }
@@ -447,7 +470,7 @@ class SVF {
     double fs          = 48000;
     int    buffer_size = 512;
 
-    FilterType filter_type;
+    FilterType filter_type = FilterType::LOWPASS;
 
     double f0 = 1000.;
     double Q  = 0.7071;
