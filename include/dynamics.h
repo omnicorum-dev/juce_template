@@ -5,7 +5,7 @@
 
 namespace omni {
 
-/// Downward/upward compressor/expander with soft knee
+/// Downward/upward compressor/expander with soft knee.
 class Dynamics {
   public:
     /// Which side of the threshold responds, and whether
@@ -18,43 +18,47 @@ class Dynamics {
         UPWARDS_EXPANSION      ///< Boosts signal above threshold
     };
 
-    /// Prepares internal envelope followers and sets their
-    /// default ballistics (fast peak detection on input, 50/200ms
-    /// attack/release on the gain-reduction smoother)
+    /// Prepares the level detector(s).
     /// @param _sample_rate Sample rate in Hz
     /// @param _buffer_size Block size in samples
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
         buffer_size = _buffer_size;
 
-        input_envelope_follower.prepare(_sample_rate, _buffer_size);
-        gain_envelope_follower.prepare(_sample_rate, _buffer_size);
+        detector.prepare(_sample_rate, _buffer_size);
+        detector.setMode(EnvelopeFollower::Mode::PEAK);
+        detector.setAttackMs(attack_ms);
+        detector.setReleaseMs(release_ms);
 
-        gain_envelope_follower.setAttackMs(50);
-        gain_envelope_follower.setReleaseMs(200);
-        gain_envelope_follower.setMode(EnvelopeFollower::Mode::PEAK);
-
-        input_envelope_follower.setAttackMs(3.0);
-        input_envelope_follower.setReleaseMs(3.0);
-        input_envelope_follower.setMode(EnvelopeFollower::Mode::PEAK);
+        pre_filter.prepare(_sample_rate, _buffer_size);
+        pre_filter.setMode(EnvelopeFollower::Mode::RMS);
+        pre_filter.setAttackMs(0.0);
+        pre_filter.setReleaseMs(50.0);
     }
 
     /// Selects Downward/Upward Compression/Expansion
     void setType(Mode _mode) { mode = _mode; }
 
-    /// Selects either peak or RMS envelope following for gain reduction
+    /// Selects Peak or RMS detection for the level detector.
     void setFollowerMode(EnvelopeFollower::Mode _mode) {
-        gain_envelope_follower.setMode(_mode);
+        detector.setMode(_mode);
     }
 
-    /// Sets attack time of gain-reduction smoother in milliseconds
+    /// Sets attack time of the level detector in milliseconds. Attack
+    /// is how fast the detector's envelope rises to meet a *louder*
+    /// input, release how fast it falls back for a *quieter* one --
+    /// the same convention every hardware/software dynamics processor
+    /// uses, independent of Mode.
     void setAttack(double _attack_ms) {
-        gain_envelope_follower.setAttackMs(_attack_ms);
+        attack_ms = _attack_ms;
+        detector.setAttackMs(attack_ms);
     }
 
-    /// Sets release time of gain-reduction smoother in milliseconds
+    /// Sets release time of the level detector in milliseconds. See
+    /// setAttack() for the attack/release convention.
     void setRelease(double _release_ms) {
-        gain_envelope_follower.setReleaseMs(_release_ms);
+        release_ms = _release_ms;
+        detector.setReleaseMs(release_ms);
     }
 
     /// Sets the threshold in dB
@@ -69,25 +73,44 @@ class Dynamics {
         half_knee_dB = 0.5 * knee_dB;
     }
 
-    /// Processes one sample: computes target gain reduction and
-    /// smooths it with envelope follower.
+    /// Sets the maximum gain change (attenuation or boost) the gain
+    /// computer is allowed to produce, in dB.
+    ///
+    /// DOWNWARDS_COMPRESSION is naturally self-limiting: its active
+    /// side is above threshold, where real signals rarely sit more
+    /// than a few tens of dB above a musical threshold, and its
+    /// (1 - 1/ratio) slope stays under 1. The other three modes have
+    /// no such ceiling -- UPWARDS_COMPRESSION and DOWNWARDS_EXPANSION
+    /// act on everything *below* threshold, which extends down to true
+    /// silence (unbounded dB distance), and UPWARDS_EXPANSION's
+    /// (ratio - 1) slope is itself unbounded. This mirrors the "Range"
+    /// control found on most gates/expanders/upward compressors (kHz
+    /// Dynamics included).
+    void setRange(double _range_dB) { range_dB = std::abs(_range_dB); }
+
+    /// Processes one sample: detects level, then applies a static
+    /// (memoryless) gain curve to it -- see the class comment for why
+    /// there is deliberately no second smoothing stage here.
     double processSample(double xn) {
-        double target_gr_dB = calculateTargetGain_dB(xn);
-        int    gr_sign      = target_gr_dB < 0 ? -1 : 1;
-        double smoothed_gr_dB =
-            gr_sign * gain_envelope_follower.processSample(target_gr_dB);
-        double gain = db2mag(-smoothed_gr_dB);
+        double detector_input = xn;
+
+        if (mode == Mode::UPWARDS_COMPRESSION ||
+            mode == Mode::DOWNWARDS_EXPANSION) {
+            detector_input = pre_filter.processSample(xn);
+        }
+
+        double level    = detector.processSample(detector_input);
+        double level_dB = mag2db(std::max(level, 1e-10));
+
+        double gr_dB = calculateGain_dB(level_dB);
+        gr_dB        = std::clamp(gr_dB, -range_dB, range_dB);
+
+        double gain = db2mag(-gr_dB);
         return xn * gain;
     }
 
   protected:
-    /// Static gain-computer curve: level -> instantaneous (unsmoothed)
-    /// target gain reduction in dB, positive = attenuate, negative = boost.
-    /// `sign` mirrors the active side (above/below threshold) into a
-    /// shared excess `e` so one three-branch (below/in-knee/above) formula
-    /// serves all four `Mode`s; `slope` (1/ratio for compression, ratio
-    /// for expansion) is applied within that shared formula.
-    double calculateTargetGain_dB(double xn) {
+    double calculateGain_dB(double level_dB) {
         double slope = ratio;
         if (mode == Mode::DOWNWARDS_COMPRESSION ||
             mode == Mode::UPWARDS_COMPRESSION) {
@@ -99,9 +122,6 @@ class Dynamics {
             mode == Mode::UPWARDS_EXPANSION) {
             sign = 1;
         }
-
-        double level    = input_envelope_follower.processSample(xn);
-        double level_dB = mag2db(std::max(level, 1e-10));
 
         double e = sign * (level_dB - threshold_dB);
         double f = 0;
@@ -121,8 +141,8 @@ class Dynamics {
     double fs          = 48000;
     int    buffer_size = 512;
 
-    EnvelopeFollower input_envelope_follower;
-    EnvelopeFollower gain_envelope_follower;
+    EnvelopeFollower detector;   ///< the one and only ballistics stage
+    EnvelopeFollower pre_filter; ///< fixed RMS pre-smoother (see prepare())
 
     Mode mode = Mode::DOWNWARDS_COMPRESSION;
 
@@ -130,6 +150,10 @@ class Dynamics {
     double ratio        = 1;
     double knee_dB      = 0;
     double half_knee_dB = 0;
+    double range_dB     = 60;
+
+    double attack_ms  = 10;
+    double release_ms = 100;
 };
 
 } // namespace omni
