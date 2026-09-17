@@ -14,8 +14,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
 
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # ============================================================================ #
 
 set(JUCE_PATH "/Users/nicorusso/Development/JUCE/"
@@ -48,6 +46,10 @@ if(APPLE)
 else()
     set(BUILD_FORMATS VST3 Standalone)
 endif()
+
+# ============================================================================ #
+
+add_subdirectory(vendor/pffft)
 
 # ============================================================================ #
 
@@ -97,6 +99,7 @@ target_link_libraries(FromScratch
     PRIVATE
         juce::juce_audio_utils
         juce::juce_audio_devices
+        PFFFT::PFFFT
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
