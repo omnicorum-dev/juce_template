@@ -75,17 +75,6 @@ class Dynamics {
 
     /// Sets the maximum gain change (attenuation or boost) the gain
     /// computer is allowed to produce, in dB.
-    ///
-    /// DOWNWARDS_COMPRESSION is naturally self-limiting: its active
-    /// side is above threshold, where real signals rarely sit more
-    /// than a few tens of dB above a musical threshold, and its
-    /// (1 - 1/ratio) slope stays under 1. The other three modes have
-    /// no such ceiling -- UPWARDS_COMPRESSION and DOWNWARDS_EXPANSION
-    /// act on everything *below* threshold, which extends down to true
-    /// silence (unbounded dB distance), and UPWARDS_EXPANSION's
-    /// (ratio - 1) slope is itself unbounded. This mirrors the "Range"
-    /// control found on most gates/expanders/upward compressors (kHz
-    /// Dynamics included).
     void setRange(double _range_dB) { range_dB = std::abs(_range_dB); }
 
     /// Processes one sample: detects level, then applies a static
