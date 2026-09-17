@@ -34,8 +34,8 @@ class Dynamics {
         gain_envelope_follower.setReleaseMs(200);
         gain_envelope_follower.setMode(EnvelopeFollower::Mode::PEAK);
 
-        input_envelope_follower.setAttackMs(0.1);
-        input_envelope_follower.setReleaseMs(0.1);
+        input_envelope_follower.setAttackMs(3.0);
+        input_envelope_follower.setReleaseMs(3.0);
         input_envelope_follower.setMode(EnvelopeFollower::Mode::PEAK);
     }
 
@@ -73,8 +73,9 @@ class Dynamics {
     /// smooths it with envelope follower.
     double processSample(double xn) {
         double target_gr_dB = calculateTargetGain_dB(xn);
+        int    gr_sign      = target_gr_dB < 0 ? -1 : 1;
         double smoothed_gr_dB =
-            gain_envelope_follower.processSample(target_gr_dB);
+            gr_sign * gain_envelope_follower.processSample(target_gr_dB);
         double gain = db2mag(-smoothed_gr_dB);
         return xn * gain;
     }
@@ -100,7 +101,7 @@ class Dynamics {
         }
 
         double level    = input_envelope_follower.processSample(xn);
-        double level_dB = mag2db(level);
+        double level_dB = mag2db(std::max(level, 1e-10));
 
         double e = sign * (level_dB - threshold_dB);
         double f = 0;
