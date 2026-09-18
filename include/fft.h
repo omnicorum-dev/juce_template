@@ -14,13 +14,35 @@ class FFT {
     FFT(size_t size) : _size(size), work(size), buffer(size) {
         assert(size != 0 && "FFT size cannot be zero");
         setup = pffftd_new_setup((int)size, PFFFT_REAL);
-        assert(setup_double && "Failed to create PFFFT setup");
+        assert(setup && "Failed to create PFFFT setup");
     }
 
     ~FFT() {
         if (setup) {
             pffftd_destroy_setup(setup);
         }
+    }
+
+    FFT(const FFT &)            = delete;
+    FFT &operator=(const FFT &) = delete;
+
+    FFT(FFT &&other) noexcept
+        : _size(other._size), setup(other.setup), work(std::move(other.work)),
+          buffer(std::move(other.buffer)) {
+        other.setup = nullptr;
+    }
+
+    FFT &operator=(FFT &&other) noexcept {
+        if (this != &other) {
+            if (setup)
+                pffftd_destroy_setup(setup);
+            _size       = other._size;
+            setup       = other.setup;
+            work        = std::move(other.work);
+            buffer      = std::move(other.buffer);
+            other.setup = nullptr;
+        }
+        return *this;
     }
 
     void forward(const double *input, std::complex<double> *output) {

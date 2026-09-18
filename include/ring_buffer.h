@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 
 /// @file
@@ -17,8 +18,8 @@ template <int max_buffer_size> class RingBuffer {
   public:
     /// Writes one sample, overwriting the oldest once full
     void push(double xn) {
-        buffer[write_head] = xn;
-        write_head         = wrap(write_head + 1);
+        buffer[(size_t)write_head] = xn;
+        write_head                 = wrap(write_head + 1);
         if (size < capacity)
             ++size;
     }
@@ -46,6 +47,23 @@ template <int max_buffer_size> class RingBuffer {
         double s0   = read(wrap(d0));
         double s1   = read(wrap(d0 + 1));
         return s0 + frac * (s1 - s0);
+    }
+
+    void getRecent(double *output, int num_samples) const {
+        assert(num_samples <= size);
+
+        const int start = wrap(write_head - num_samples);
+
+        const int first = std::min(num_samples, capacity - start);
+
+        std::copy(
+            buffer.begin() + start, buffer.begin() + start + first, output);
+
+        if (first < num_samples) {
+            std::copy(buffer.begin(),
+                      buffer.begin() + (num_samples - first),
+                      output + first);
+        }
     }
 
     /// Zeros the buffer and resets read/write position

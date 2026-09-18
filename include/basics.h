@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <vector>
 
 /// @file
 /// Small stateless helpers: dB/linear conversions, RMS/peak measurement,
@@ -128,6 +129,34 @@ constexpr std::array<double, window_size> hannWindow = [] {
         window[n] = hann(n, window_size);
     return window;
 }();
+
+/// Periodic (DFT-even) Hann value at sample index n of N -- unlike
+/// hann() above, this is what constant-overlap-add reconstruction
+/// needs (hann() is the symmetric/filter-design variant).
+constexpr double hannPeriodic(int n, int N) {
+    return 0.5 * (1.0 - std::cos(2 * M_PI * n / N));
+}
+
+template <int window_size>
+constexpr std::array<double, window_size> sqrtHannWindow = [] {
+    std::array<double, window_size> window{};
+    for (int n = 0; n < window_size; ++n)
+        window[n] = std::sqrt(
+            hannPeriodic(n, window_size)); // not constexpr-safe pre-C++26
+    return window;
+}();
+
+/// Runtime-sized counterpart, for code that picks its FFT size at
+/// runtime rather than compile time (see STFT in stft.h).
+inline std::vector<double> makeSqrtHannWindow(size_t N) {
+    std::vector<double> window(N);
+    for (size_t n = 0; n < N; ++n) {
+        double w  = 0.5 * (1.0 - std::cos(2.0 * M_PI * (double)n / (double)N));
+        window[n] = std::sqrt(std::max(0.0, w)); // clamp guards the last bit
+                                                 // of float error right at w==0
+    }
+    return window;
+}
 
 /// Hamming window value at sample index `n` of `N`
 constexpr double hamming(int n, int N) {
