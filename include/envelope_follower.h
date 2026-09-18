@@ -12,8 +12,8 @@ namespace omni {
 class EnvelopeFollower {
   public:
     enum class Mode {
-        PEAK, /// Tracks |xn| directly
-        RMS   /// Tracks xn^2, sqrt'd on output
+        PEAK, ///< Tracks |xn| directly
+        RMS   ///< Tracks xn^2, sqrt'd on output
     };
 
     void prepare(double _sample_rate, int _buffer_size) {

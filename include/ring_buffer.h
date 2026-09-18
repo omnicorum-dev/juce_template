@@ -49,6 +49,14 @@ template <int max_buffer_size> class RingBuffer {
         return s0 + frac * (s1 - s0);
     }
 
+    /// Copies the most recently pushed samples to an output buffer
+    /// Samples are copied in chronological order, from oldest to
+    /// newest.
+    /// @param output Destination buffer for the samples
+    /// @param num_samples Number of recent samples to retrieve
+    ///
+    /// @note @p num_samples must not exceed the current number of samples
+    ///       stored in the buffer
     void getRecent(double *output, int num_samples) const {
         assert(num_samples <= size);
 

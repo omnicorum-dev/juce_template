@@ -7,10 +7,15 @@
 #include <complex>
 #include <vector>
 
+/// @file
+/// PFFFT wrapper, allowing for easy FFT and IFFT
+
 namespace omni {
 
+/// FFT and IFFT wrapper. Does not hold any input/output state
 class FFT {
   public:
+    /// Must declare FFT size at construction of object
     FFT(size_t size) : _size(size), work(size), buffer(size) {
         assert(size != 0 && "FFT size cannot be zero");
         setup = pffftd_new_setup((int)size, PFFFT_REAL);
@@ -45,6 +50,8 @@ class FFT {
         return *this;
     }
 
+    /// Forward FFT. Uses REAL inputs (time) and produces COMPLEX outputs
+    /// (spectrum)
     void forward(const double *input, std::complex<double> *output) {
         pffftd_transform_ordered(
             setup, input, buffer.data(), work.data(), PFFFT_FORWARD);
@@ -60,6 +67,8 @@ class FFT {
         output[half] = {buffer[1], 0};
     }
 
+    /// Inverse FFT. Uses COMPLEX inputs (spectrum) and produces REAL
+    /// outputs (time)
     void inverse(const std::complex<double> *input, double *output) {
         const size_t half = _size / 2;
 
@@ -81,7 +90,10 @@ class FFT {
         }
     }
 
+    /// Get the size of the FFT (temporal samples)
     size_t size() const { return _size; }
+
+    /// Get the size of the spectrum output (number of bins)
     size_t spectrumSize() const { return _size / 2 + 1; }
 
   private:
