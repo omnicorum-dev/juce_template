@@ -1,7 +1,7 @@
 #pragma once
 
+#include "juce/parameter_layout.h"
 #include "juce_audio_basics/juce_audio_basics.h"
-#include "parameter_layout.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
 using namespace omni;
@@ -79,9 +79,7 @@ class Processor final : public juce::AudioProcessor {
   private:
     // If you want a custom editor, remove the generic editor and write the
     // definition in the cpp. It should instead return your editor.
-    juce::AudioProcessorEditor *createEditor() override {
-        return new juce::GenericAudioProcessorEditor(*this);
-    }
+    juce::AudioProcessorEditor *createEditor() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Processor)
 

@@ -1,8 +1,8 @@
 #include "processor.h"
+#include "juce/midi_cursor.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
 #include "juce_core/juce_core.h"
-#include "midi_cursor.h"
 
 /* ======================================================== */
 
@@ -73,6 +73,11 @@ void Processor::prepareToPlay(double sample_rate, int buffer_size) {
 }
 
 void Processor::releaseResources() {}
+
+// If you want a custom editor, remove the generic editor return your editor.
+juce::AudioProcessorEditor *Processor::createEditor() {
+    return new juce::GenericAudioProcessorEditor(*this);
+}
 
 void Processor::processBlock(juce::AudioBuffer<float> &buffer,
                              juce::MidiBuffer         &messages) {
