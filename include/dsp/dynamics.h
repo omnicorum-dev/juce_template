@@ -1,7 +1,7 @@
 #pragma once
 
-#include "basics.h"
-#include "envelope_follower.h"
+#include "dsp/envelope_follower.h"
+#include "general/basics.h"
 
 namespace omni {
 

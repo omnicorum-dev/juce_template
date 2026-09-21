@@ -1,4 +1,5 @@
 #include "processor.h"
+#include "editor.h"
 #include "juce/midi_cursor.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include "juce_audio_processors_headless/juce_audio_processors_headless.h"
@@ -74,9 +75,10 @@ void Processor::prepareToPlay(double sample_rate, int buffer_size) {
 
 void Processor::releaseResources() {}
 
-// If you want a custom editor, remove the generic editor return your editor.
+// If you want a custom editor, swap the commented line
 juce::AudioProcessorEditor *Processor::createEditor() {
     return new juce::GenericAudioProcessorEditor(*this);
+    // return new Editor(*this, apvts);
 }
 
 void Processor::processBlock(juce::AudioBuffer<float> &buffer,
@@ -163,6 +165,10 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
             float  dry          = channel_data[sample];
             float  xn           = dry * in_gain;
 
+            if (channel == 0) {
+                input_tap.push(xn);
+            }
+
             /* ======================================================== */
 
             float yn = xn;
@@ -173,6 +179,8 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
             channel_data[sample] = mixed * out_gain;
         }
     }
+
+    output_tap.push(buffer.getReadPointer(0), buffer.getNumSamples());
 }
 
 /* ======================================================== */

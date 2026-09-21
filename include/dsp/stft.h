@@ -7,11 +7,11 @@
 #include <initializer_list>
 #include <vector>
 
-#include "basics.h"
-#include "fft.h"
-#include "fifo.h"
-#include "overlap_add.h"
-#include "ring_buffer.h"
+#include "dsp/fft.h"
+#include "dsp/ring_buffer.h"
+#include "general/basics.h"
+#include "general/fifo.h"
+#include "general/overlap_add.h"
 
 /// @file Short-Time Fourier Transform processor.
 

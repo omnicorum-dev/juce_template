@@ -75,11 +75,19 @@ juce_add_plugin(FromScratch
     AU_MAIN_TYPE kAudioUnitType_Effect
 )
 
+juce_add_binary_data(Data
+    SOURCES
+        fonts/JetBrainsMono-Regular.ttf
+        fonts/JetBrainsMono-Bold.ttf
+)
+set_target_properties(Data PROPERTIES EXPORT_COMPILE_COMMANDS OFF)
+
 juce_generate_juce_header(FromScratch)
 
 target_sources(FromScratch
     PRIVATE
         src/processor.cpp
+        src/editor.cpp
 )
 
 target_include_directories(FromScratch
@@ -100,6 +108,7 @@ target_link_libraries(FromScratch
         juce::juce_audio_utils
         juce::juce_audio_devices
         PFFFT::PFFFT
+        Data
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "basics.h"
-#include "ring_buffer.h"
-#include "value_smoother.h"
+#include "dsp/ring_buffer.h"
+#include "general/basics.h"
+#include "general/value_smoother.h"
 
 /// @file
 /// A feedback delay line built on RingBuffer (storage) and

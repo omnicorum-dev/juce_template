@@ -1,6 +1,7 @@
 #pragma once
 
 #include "juce/parameter_layout.h"
+#include "juce/sample_tap.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -130,6 +131,9 @@ class Processor final : public juce::AudioProcessor {
     pFloat mixSmooth;
 
     pBool bypassParam;
+
+    SampleTap input_tap;
+    SampleTap output_tap;
 
   private:
     static APVTS::ParameterLayout createParameterLayout();
