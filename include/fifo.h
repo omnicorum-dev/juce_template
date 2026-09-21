@@ -23,6 +23,8 @@ template <size_t capacity> class Fifo {
         write_index         = (write_index + 1) % capacity;
         if (count < capacity)
             ++count;
+        else
+            read_index = (read_index + 1) % capacity;
     }
 
     /// Adds a buffer of values to the FIFO
