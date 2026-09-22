@@ -86,6 +86,11 @@ class TanhShaper : public Distortion {
     double distortion(double xn) override { return std::tanh(xn); }
 };
 
+class AtanShaper : public Distortion {
+  public:
+    double distortion(double xn) override { return std::atan(xn); }
+};
+
 /// Soft clipper with an explicit threshold and a quadratic (parabolic)
 /// knee, settable in either linear amplitude or dB.
 class SoftClipper : public Distortion {
