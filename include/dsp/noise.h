@@ -28,7 +28,7 @@ class NoiseGenerator {
         prev_white  = 0.0;
     }
 
-    double process() {
+    double processSample() {
         switch (color) {
         case Color::White:
             return processWhite();
@@ -43,7 +43,7 @@ class NoiseGenerator {
 
     void processBlock(double *out, size_t num_samples) {
         for (size_t i = 0; i < num_samples; ++i) {
-            out[i] = process();
+            out[i] = processSample();
         }
     }
 
