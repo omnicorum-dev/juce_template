@@ -15,16 +15,39 @@ To generate the compile commands used by clangd, make sure
 to run the CMake configure step. (I usually use Ninja.
 XCode and MSVC won't generate the clang compile commands!)
 
+Configure debug build:
+
 ```sh
-cmake --preset config
+cmake --preset debug 
+```
+
+Configure release build:
+
+```sh
+cmake --preset release
 ```
 
 ## Building (on my machine, at least)
+
+Build debug build:
 
 ```sh
 cmake --build --prest debug
 ```
 
+Build release build:
+
 ```sh
 cmake --build --preset release
+```
+
+## Releasing
+
+A github workflow is built in. This workflow builds for
+universal macOS, x86_64 Windows, and x86_64 Linux.
+It doesn't run for every `git push`, so to have it run,
+
+```sh
+git tag v*.*.*
+git push origin v*.*.*
 ```

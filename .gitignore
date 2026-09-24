@@ -1,3 +1,6 @@
 build/
+build-release/
 .DS_STORE
 docs/
+release/
+releases/
