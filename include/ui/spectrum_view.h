@@ -8,6 +8,9 @@
 #include "theme.h"
 
 template <size_t fft_size> class SpectrumView : public juce::Component {
+    static_assert(fft_size >= 32,
+                  "PFFFT needs N >= 32 (and N = 2^a * 3^b * 5^c, a >= 5)");
+
   public:
     static constexpr float min_hz = 20.f, max_hz = 20000.f;
     static constexpr float min_db = -60.f, max_db = 6.f;
@@ -28,14 +31,15 @@ template <size_t fft_size> class SpectrumView : public juce::Component {
     void update(double sample_rate) {
         fs = sample_rate;
 
-        float chunk[1024];
-        bool  got = false;
-        for (int n; (n = tap.read(chunk, 1024)) > 0;) {
+        constexpr size_t chunk_size = std::min<size_t>(1024, fft_size);
+        float            chunk[chunk_size];
+        bool             got = false;
+
+        for (int n; (n = tap.read(chunk, (int)chunk_size)) > 0;) {
             got = true;
             std::copy(samples.begin() + n, samples.end(), samples.begin());
-            for (int i = 0; i < n; ++i) {
+            for (int i = 0; i < n; ++i)
                 samples[fft_size - (size_t)n + (size_t)i] = chunk[i];
-            }
         }
         if (!got)
             return;
@@ -125,7 +129,8 @@ template <size_t fft_size> class SpectrumView : public juce::Component {
     const Theme                      &theme;
     SampleTap                        &tap;
     omni::FFT                         fft;
-    std::vector<double>               window, samples, input;
+    std::vector<double>               window, samples;
+    omni::AlignedVector<double>       input;
     std::vector<std::complex<double>> bins;
     std::vector<float>                db;
     double                            window_sum = 0.0;

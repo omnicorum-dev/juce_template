@@ -9,7 +9,7 @@ class NoiseGenerator {
         White,
         Pink,
         Brown,
-        Blue,
+        Violet,
     };
 
     void prepare(uint32_t seed = 0) {
@@ -36,8 +36,8 @@ class NoiseGenerator {
             return processPink();
         case Color::Brown:
             return processBrown();
-        case Color::Blue:
-            return processBlue();
+        case Color::Violet:
+            return processViolet();
         }
     }
 
@@ -70,7 +70,7 @@ class NoiseGenerator {
 
         double pink = pink_b0 + pink_b1 + pink_b2 + pink_b3 + pink_b4 +
                       pink_b5 + pink_b6 + white * 0.5362;
-        pink_b6 = white * 0.115926;
+        pink_b6     = white * 0.115926;
 
         return pink * 0.11;
     }
@@ -81,11 +81,11 @@ class NoiseGenerator {
         return brown_state * 3.5;
     }
 
-    double processBlue() {
-        double white = nextWhite();
-        double blue  = (white - prev_white) * 0.5;
-        prev_white   = white;
-        return blue;
+    double processViolet() {
+        double white  = nextWhite();
+        double violet = (white - prev_white) * 0.5;
+        prev_white    = white;
+        return violet;
     }
 
   private:

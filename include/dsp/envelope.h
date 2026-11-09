@@ -110,29 +110,34 @@ class AHDSR {
     }
 
   private:
+    static constexpr double finish_epsilon = 0.0005;
+
     double advanceTo(double current, double target, double time,
                      double start_level, double end_level) {
+        const double span = std::abs(end_level - start_level);
+        if (span <= finish_epsilon)
+            return target;
+
         switch (ramp_shape) {
         case RampShape::Linear: {
-            double span = std::abs(end_level - start_level);
-            if (span < 1e-9)
-                return target;
             double increment = span / (time * sample_rate);
             return current + (target > current ? increment : -increment);
         }
         case RampShape::Exponential: {
-            double coeff = std::exp(std::log(0.01) / (time * sample_rate));
+            // shrink the remaining distance from `span` to `finish_epsilon`
+            // over exactly time * sample_rate samples
+            double coeff = std::exp(std::log(finish_epsilon / span) /
+                                    (time * sample_rate));
             return target + (current - target) * coeff;
         }
         default:
             return target;
-        };
+        }
     }
 
     bool reachedTarget(double current, double target, bool rising) const {
-        constexpr double epsilon = 0.0005;
-        return rising ? (current >= target - epsilon)
-                      : (current <= target + epsilon);
+        return rising ? (current >= target - finish_epsilon)
+                      : (current <= target + finish_epsilon);
     }
 
   private:

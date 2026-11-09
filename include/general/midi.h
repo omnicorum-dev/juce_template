@@ -69,7 +69,7 @@ enum class PitchClass {
 
 /// Exact (non-table) note-to-frequency conversion via pow(2,x) -- prefer
 /// midiNoteToFreq() for a precomputed, cheaper lookup.
-constexpr double midiNoteToFreqExact(int note) {
+inline double midiNoteToFreqExact(int note) {
     return A4 * std::pow(2, (note - 69) / 12.0);
 }
 

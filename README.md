@@ -7,7 +7,7 @@ My own personal JUCE template, with everything set up and ready for basic DSP
 Change the project name and all `juce_add_plugin` fields.
 
 Also, set the `JUCE_PATH` to wherever your JUCE clone is.
-If you don't have a local JUCE install, it will fallback
+In the `CMakeLists.txt` if `JUCE_PATH` is empty, it will fallback
 to a FetchContent, so if you don't want multiple copies
 of JUCE hanging around your computer, just set `JUCE_PATH`
 
@@ -32,7 +32,7 @@ cmake --preset release
 Build debug build:
 
 ```sh
-cmake --build --prest debug
+cmake --build --preset debug
 ```
 
 Build release build:

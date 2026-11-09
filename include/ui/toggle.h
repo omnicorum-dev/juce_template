@@ -84,6 +84,12 @@ class BypassToggle : public juce::Component {
     void paint(juce::Graphics &g) override {
         auto bounds = getLocalBounds().toFloat();
 
+        juce::Colour colour;
+        if (on) // bypassed: grey
+            colour = hovered ? theme.hovered : theme.deselected;
+        else // active: lit
+            colour = hovered ? theme.accent.brighter(0.2f) : theme.accent;
+
         g.setColour(on ? theme.deselected : theme.accent);
         g.fillRoundedRectangle(bounds, theme.round_radius);
     }

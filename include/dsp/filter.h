@@ -3,6 +3,10 @@
 #include <array>
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /// @file
 /// Biquad-family and state-variable filters: RBJ cookbook EQ types,
 /// a Linkwitz-Riley crossover pair, a cascaded Butterworth, a DC
@@ -19,12 +23,14 @@ constexpr double twoPi = 2.0 * M_PI;
 class Biquad {
   public:
     Biquad() { reset(); }
+    virtual ~Biquad() = default;
 
     /// @param _sample_rate Sample rate in Hz
     /// @param _buffer_size Host block size
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
         buffer_size = _buffer_size;
+        updateCoeffs();
     }
 
     /// Resets f0/Q/A and coeffs to a pass-through state.
@@ -95,7 +101,7 @@ class Biquad {
     double f0, Q, A;
     double w0, alpha;
     double a0, a1, a2, b0, b1, b2;
-    double xnm1, xnm2, ynm1, ynm2;
+    double xnm1 = 0.0, xnm2 = 0.0, ynm1 = 0.0, ynm2 = 0.0;
 };
 
 /// Selects the response shape for RBJ, Butterworth, and SVF filters
@@ -383,7 +389,7 @@ template <int max_stages> class Butterworth {
 
   protected:
     FilterType filter_type = FilterType::LOWPASS;
-    int        num_stages  = 2;
+    int        num_stages  = std::min(2, max_stages);
     double     sample_rate = 48000.f;
     float      target_freq = 1000.f;
 
@@ -434,7 +440,7 @@ class SVF {
         updateCoeffs();
     }
 
-    /// Sets shelf/peak LINEAR gain (Bell/Highshelf/Lowshelf only)
+    /// Sets shelf/peak SQRT gain (Bell/Highshelf/Lowshelf only)
     void setA(float a) {
         A = a;
         updateCoeffs();
@@ -458,13 +464,6 @@ class SVF {
     void clear() {
         ic1eq = 0;
         ic2eq = 0;
-
-        a1 = 0;
-        a2 = 0;
-        a3 = 0;
-        m0 = 1; // passthrough
-        m1 = 0;
-        m2 = 0;
     }
 
   protected:
@@ -472,6 +471,11 @@ class SVF {
     /// filter_type/f0/Q/A, via prewarped g = tan(pi*f0/fs).
     void updateCoeffs() {
         double g = tan(M_PI * f0 / fs);
+        if (filter_type == FilterType::HIGHSHELF)
+            g *= std::sqrt(A);
+        else if (filter_type == FilterType::LOWSHELF)
+            g /= std::sqrt(A);
+
         double k = filter_type == FilterType::BELL ? 1. / (Q * A) : 1. / Q;
 
         a1 = 1. / (1. + g * (g + k));
@@ -494,6 +498,9 @@ class SVF {
             m1 = 1;
             m2 = 0;
             break;
+        // Not a bandpass peak, this is a different peaking algorithm
+        // I just put it here because it also has peak in the name
+        // and it meant I wouldn't have to change the enum LOL
         case FilterType::BANDPASS_PEAK:
             m0 = 1;
             m1 = -k;
@@ -557,6 +564,7 @@ class OnePole {
     void prepare(double _sample_rate, int _buffer_size) {
         fs          = _sample_rate;
         buffer_size = _buffer_size;
+        setCutoff(f0);
     }
 
     double processSample(double xn) {

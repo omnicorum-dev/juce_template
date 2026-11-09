@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -94,8 +95,8 @@ template <int max_buffer_size> class RingBuffer {
 
     std::array<double, max_buffer_size * 2> buffer{};
 
-    int capacity = max_buffer_size; // was size_t — kept as int so `wrap`'s
-                                    // signed-modulo trick works correctly
+    int capacity   = max_buffer_size; // was size_t — kept as int so `wrap`'s
+                                      // signed-modulo trick works correctly
     int write_head = 0; // for negative inputs (e.g. delay > write_head)
     int size       = 0;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 
 /// @file
 /// A value smoother that ramps to a target either linearly (exact

@@ -2,6 +2,10 @@
 
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /// @file
 /// A phase-accumulator oscillator driven by an arbitrary generator
 /// function (defaults to sine), with phase/frequency modulation inputs.

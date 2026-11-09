@@ -32,8 +32,9 @@ template <int max_buffer_size> class DelayLine {
     /// there per the current smoothing settings rather than jumping.
     void setDelayTimeMs(double delay_ms) {
         double delay_samples = ms2samples(delay_ms, fs);
+        // 1 sample is the shortest delay a feedback loop can have
         delay_samples =
-            std::clamp(delay_samples, 0., (double)(max_buffer_size - 2));
+            std::clamp(delay_samples, 1.0, (double)(max_buffer_size - 1));
         smoother.setTargetValue(delay_samples);
     }
 
@@ -62,13 +63,16 @@ template <int max_buffer_size> class DelayLine {
     /// writes `xn + feedback * delayed` back into the buffer. Read
     /// happens before write, so the minimum achievable delay is 1 sample.
     double processSample(double xn) {
-        double delay_samples = smoother.getValue();
-        double delayed       = buffer.readFractional_linear(delay_samples);
+        // the smoother starts at 0 until the first target arrives, so clamp
+        // here too
+        double delay_samples = std::max(1.0, smoother.getValue());
+
+        // read() is relative to the last pushed sample, which is already 1
+        // sample old
+        double delayed = buffer.readFractionalLinear(delay_samples - 1.0);
 
         delayed = feedback_function(delayed);
-
         buffer.push(xn + feedback * delayed);
-
         return delayed;
     }
 

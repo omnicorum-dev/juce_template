@@ -15,6 +15,8 @@ namespace omni {
 /// result (waveshaping is often asymmetric and pushes in a DC offset).
 class Distortion {
   public:
+    virtual ~Distortion() = default;
+
     /// The shaping curve, in terms of the drive/bias-adjusted input.
     /// Implement this in a derived class.
     virtual double distortion(double xn) = 0;
@@ -67,11 +69,11 @@ class RectifierHalf : public Distortion {
     }
 };
 
-/// Sine-fold waveshaper: sin(xn * 2/pi). Folds rather than clips, so it
+/// Sine-fold waveshaper: sin(xn * pi/2). Folds rather than clips, so it
 /// can add harmonic content well past unity drive instead of flattening.
 class SineFold : public Distortion {
   public:
-    double distortion(double xn) override { return std::sin(M_2_PI * xn); }
+    double distortion(double xn) override { return std::sin(M_PI_2 * xn); }
 };
 
 /// Hard clip to [-1, 1].
@@ -88,7 +90,7 @@ class TanhShaper : public Distortion {
 
 class AtanShaper : public Distortion {
   public:
-    double distortion(double xn) override { return std::atan(xn); }
+    double distortion(double xn) override { return M_2_PI * std::atan(xn); }
 };
 
 /// Soft clipper with an explicit threshold and a quadratic (parabolic)
@@ -106,9 +108,12 @@ class SoftClipper : public Distortion {
         halfKnee    = 0.5 * knee_linear;
     }
 
-    void setKnee_dB(double knee) {
-        knee_linear = std::min((2 * threshold_linear),
-                               (1.0 / std::pow(10.0, knee / 20.0)));
+    void setKnee_dB(double knee_dB) {
+        knee_dB           = std::max(0.0, knee_dB);
+        const double half = knee_dB / 40.0;
+        const double width =
+            threshold_linear * (std::pow(10.0, half) - std::pow(10.0, -half));
+        knee_linear = std::min(2 * threshold_linear, width);
         halfKnee    = 0.5 * knee_linear;
     }
 
@@ -127,9 +132,9 @@ class SoftClipper : public Distortion {
     }
 
   private:
-    double threshold_linear;
-    double knee_linear;
-    double halfKnee;
+    double threshold_linear = 1;
+    double knee_linear      = 0;
+    double halfKnee         = 0;
 };
 
 } // namespace omni

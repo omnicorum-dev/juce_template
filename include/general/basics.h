@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -108,7 +109,7 @@ inline double sigmoid(double xn, double knee = 1) {
 inline double cubicClip(double xn) {
     if (std::abs(xn) > 1)
         return sign(xn);
-    return xn - (xn * xn * xn) / 3.;
+    return 1.5 * (xn - (xn * xn * xn) / 3.);
 }
 /// @}
 
@@ -117,13 +118,13 @@ inline double cubicClip(double xn) {
 /// @{
 
 /// Hann window value at sample index `n` of `N`
-constexpr double hann(int n, int N) {
+inline double hann(int n, int N) {
     return 0.5 * (1.0 - std::cos(2 * M_PI * n / (N - 1)));
 }
 
 /// Compile-time generated Hann window table of length `window_size`
 template <int window_size>
-constexpr std::array<double, window_size> hannWindow = [] {
+inline const std::array<double, window_size> hannWindow = [] {
     std::array<double, window_size> window{};
     for (int n = 0; n < window_size; ++n)
         window[n] = hann(n, window_size);
@@ -133,12 +134,12 @@ constexpr std::array<double, window_size> hannWindow = [] {
 /// Periodic (DFT-even) Hann value at sample index n of N -- unlike
 /// hann() above, this is what constant-overlap-add reconstruction
 /// needs (hann() is the symmetric/filter-design variant).
-constexpr double hannPeriodic(int n, int N) {
+inline double hannPeriodic(int n, int N) {
     return 0.5 * (1.0 - std::cos(2 * M_PI * n / N));
 }
 
 template <int window_size>
-constexpr std::array<double, window_size> sqrtHannWindow = [] {
+inline const std::array<double, window_size> sqrtHannWindow = [] {
     std::array<double, window_size> window{};
     for (int n = 0; n < window_size; ++n)
         window[n] = std::sqrt(
@@ -159,13 +160,13 @@ inline std::vector<double> makeSqrtHannWindow(size_t N) {
 }
 
 /// Hamming window value at sample index `n` of `N`
-constexpr double hamming(int n, int N) {
+inline double hamming(int n, int N) {
     return 0.54 - 0.46 * std::cos(2. * M_PI * n / (N - 1));
 }
 
 /// Compile-time generated Hamming window table of length `window_size`
 template <int window_size>
-constexpr std::array<double, window_size> hammingWindow = [] {
+inline std::array<double, window_size> hammingWindow = [] {
     std::array<double, window_size> window{};
     for (int n = 0; n < window_size; ++n)
         window[n] = hamming(n, window_size);
@@ -173,7 +174,7 @@ constexpr std::array<double, window_size> hammingWindow = [] {
 }();
 
 /// Blackman value at sample index `n` of `N`
-constexpr double blackman(int n, int N) {
+inline double blackman(int n, int N) {
     constexpr double a0  = 0.42;
     constexpr double a1  = 0.5;
     constexpr double a2  = 0.08;
@@ -183,7 +184,7 @@ constexpr double blackman(int n, int N) {
 
 /// Compile-time generated Blackman window table of length `window_size`
 template <int window_size>
-constexpr std::array<double, window_size> blackmanWindow = [] {
+inline std::array<double, window_size> blackmanWindow = [] {
     std::array<double, window_size> window{};
     for (int n = 0; n < window_size; ++n)
         window[n] = blackman(n, window_size);
@@ -191,13 +192,13 @@ constexpr std::array<double, window_size> blackmanWindow = [] {
 }();
 
 /// Bartlet window value at sample index `n` of `N`
-constexpr double bartlet(int n, int N) {
+inline double bartlet(int n, int N) {
     return 1 - std::abs(2. * n / (N - 1) - 1.);
 }
 
 /// Compile-time generated Bartlet window table of length `window_size`
 template <int window_size>
-constexpr std::array<double, window_size> bartletWindow = [] {
+inline std::array<double, window_size> bartletWindow = [] {
     std::array<double, window_size> window{};
     for (int n = 0; n < window_size; ++n)
         window[n] = bartlet(n, window_size);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 
 /// @file
 /// Attack/release envelope follower with Peak and RMS detection modes.

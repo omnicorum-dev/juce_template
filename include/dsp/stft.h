@@ -17,7 +17,7 @@
 
 namespace omni {
 
-#define SpectralFn [&](std::complex<double> * spectrum, size_t num_bins)
+#define SpectralFn [&](std::complex<double> *spectrum, size_t num_bins)
 
 /// STFT processor. Processes an input signal in overlapping windows,
 /// applying a user-provided spectral function to each frequency-domain
@@ -54,7 +54,7 @@ template <size_t max_size> class STFT {
 
     /// Get the processing latency in samples.
     /// This is the number of samples in the active hop size.
-    size_t getLatencySamples() const { return active->hop_size; }
+    size_t getLatencySamples() const { return active->size - 1; }
 
     /// Process a single input sample.
     /// Use general form `processSample(xn, SpectralFn { .. });`
@@ -147,10 +147,10 @@ template <size_t max_size> class STFT {
     std::vector<Slot> slots;
     Slot             *active = nullptr;
 
-    RingBuffer<max_size>                                history{};
-    std::array<double, max_size>                        fft_input{};
-    std::array<std::complex<double>, max_spectrum_size> spectrum{};
-    std::array<double, max_size>                        fft_output{};
+    RingBuffer<max_size> history{};
+    alignas(32) std::array<double, max_size> fft_input{};
+    alignas(32) std::array<std::complex<double>, max_spectrum_size> spectrum{};
+    std::array<double, max_size> fft_output{};
 
     OverlapAddBuffer<max_size> overlap_add{};
     Fifo<max_size * 2>         wet_queue{};

@@ -74,6 +74,9 @@ class Processor final : public juce::AudioProcessor {
     void               setCurrentProgram(int) override {}
     const juce::String getProgramName(int) override { return {}; }
     void               changeProgramName(int, const juce::String &) override {}
+    juce::AudioProcessorParameter *getBypassParameter() const override {
+        return apvts.getParameter(Params::bypass_ID);
+    }
 
     /* ======================================================== */
 
@@ -118,7 +121,7 @@ class Processor final : public juce::AudioProcessor {
         SCFloat  mix_max      = 100.f;
         SCFloat  mix_default  = 100.f;
         SCFloat  mix_stepSize = 0.1f;
-        SCFloat  mix_skew     = 3.f;
+        SCFloat  mix_skew     = Skew::linear;
 
         // bypass (bool)
         SCString bypass_ID      = "bypass";

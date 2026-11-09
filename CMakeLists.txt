@@ -63,7 +63,7 @@ juce_add_plugin(FromScratch
     COMPANY_NAME "Omnicorum"
 
     PLUGIN_MANUFACTURER_CODE Omni
-    PLUGIN_CODE frsc
+    PLUGIN_CODE Frsc
 
     FORMATS ${BUILD_FORMATS}
 

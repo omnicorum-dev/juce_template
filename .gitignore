@@ -1,6 +1,6 @@
 build/
 build-release/
-.DS_STORE
+.DS_Store
 docs/
 release/
 releases/

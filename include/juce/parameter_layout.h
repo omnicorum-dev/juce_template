@@ -22,8 +22,8 @@ typedef juce::AudioProcessorValueTreeState APVTS;
 /// Common NormalisableRange skew values for addFloat().
 struct Skew {
     SCFloat linear      = 1.0f; ///< No skew
-    SCFloat exponential = 3.f;  /// Biases toward low-end (e.g. frequency knob)
-    SCFloat logarithmic = 0.3f; /// Biases toward high-end
+    SCFloat exponential = 3.f;  /// Biases toward high-end
+    SCFloat logarithmic = 0.3f; /// Biases toward low-end (e.g. frequency knob)
 };
 
 /* ======================================================== */
@@ -100,9 +100,10 @@ class pFloat {
         fs        = _sampleRate;
         blockSize = _blockSize;
 
+        rawValue = prevValue = apvts->getRawParameterValue(ID)->load();
+
         smoothValue.reset(fs, smoothRate);
-        smoothValue.setCurrentAndTargetValue(
-            apvts->getRawParameterValue(ID)->load());
+        smoothValue.setCurrentAndTargetValue(rawValue);
     }
 
     /// Last raw (unsmoothed) value seen by update().

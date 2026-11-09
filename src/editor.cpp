@@ -1,8 +1,10 @@
 #include "editor.h"
+#include "content.h"
 #include "juce/parameter_layout.h"
 #include "juce_audio_processors/juce_audio_processors.h"
 #include "juce_graphics/juce_graphics.h"
 #include "processor.h"
+#include <algorithm>
 
 Editor::Editor(Processor &p, APVTS &a)
     : juce::AudioProcessorEditor(&p), audio_processor(p), apvts(a),
@@ -21,13 +23,15 @@ Editor::Editor(Processor &p, APVTS &a)
 
     setResizable(true, false);
 
-    setSize(Content::design_width / 2, Content::design_height / 2);
+    auto ui = apvts.state.getChildWithName("ui");
+    int  w  = ui.getProperty("width", Content::design_width / 2);
+
+    w     = std::clamp(w, Content::design_width / 4, Content::design_width * 3);
+    int h = w * (Content::design_height / Content::design_width);
+
+    setSize(w, h);
 
     setLookAndFeel(&laf);
-
-    auto ui = a.state.getOrCreateChildWithName("ui", nullptr);
-    ui.setProperty("width", getWidth(), nullptr);
-    ui.setProperty("height", getHeight(), nullptr);
 }
 
 Editor::~Editor() { setLookAndFeel(nullptr); }

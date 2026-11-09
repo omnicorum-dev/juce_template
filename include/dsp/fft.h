@@ -12,6 +12,44 @@
 
 namespace omni {
 
+/// std::allocator replacement that returns `Align`-byte-aligned memory
+template <typename T, std::size_t Align = 32> struct AlignedAllocator {
+    using value_type = T;
+
+    // Needed because of the non-type template parameter
+    template <typename U> struct rebind {
+        using other = AlignedAllocator<U, Align>;
+    };
+
+    AlignedAllocator() noexcept = default;
+    template <typename U>
+    AlignedAllocator(const AlignedAllocator<U, Align> &) noexcept {}
+
+    T *allocate(std::size_t n) {
+        return static_cast<T *>(
+            ::operator new(n * sizeof(T), std::align_val_t{Align}));
+    }
+    void deallocate(T *p, std::size_t) noexcept {
+        ::operator delete(p, std::align_val_t{Align});
+    }
+
+    template <typename U>
+    bool operator==(const AlignedAllocator<U, Align> &) const noexcept {
+        return true;
+    }
+    template <typename U>
+    bool operator!=(const AlignedAllocator<U, Align> &) const noexcept {
+        return false;
+    }
+};
+
+template <typename T> using AlignedVector = std::vector<T, AlignedAllocator<T>>;
+
+/// PFFFT wants 32-byte-aligned pointers on x86, 16 on ARM
+inline bool isSimdAligned(const void *p) {
+    return (reinterpret_cast<std::uintptr_t>(p) & 31) == 0;
+}
+
 /// FFT and IFFT wrapper. Does not hold any input/output state
 class FFT {
   public:
@@ -53,6 +91,8 @@ class FFT {
     /// Forward FFT. Uses REAL inputs (time) and produces COMPLEX outputs
     /// (spectrum)
     void forward(const double *input, std::complex<double> *output) {
+        assert(isSimdAligned(input) && "FFT input must be 32-byte aligned");
+
         pffftd_transform_ordered(
             setup, input, buffer.data(), work.data(), PFFFT_FORWARD);
 
@@ -70,6 +110,8 @@ class FFT {
     /// Inverse FFT. Uses COMPLEX inputs (spectrum) and produces REAL
     /// outputs (time)
     void inverse(const std::complex<double> *input, double *output) {
+        assert(isSimdAligned(output) && "FFT output must be 32-byte aligned");
+
         const size_t half = _size / 2;
 
         buffer[0] = input[0].real();
@@ -101,8 +143,8 @@ class FFT {
 
     PFFFTD_Setup *setup = nullptr;
 
-    std::vector<double> work;
-    std::vector<double> buffer;
+    AlignedVector<double> work;
+    AlignedVector<double> buffer;
 };
 
 } // namespace omni
