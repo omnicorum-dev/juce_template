@@ -15,10 +15,10 @@ template <size_t fft_size> class SpectrumView : public juce::Component {
     static constexpr float min_hz = 20.f, max_hz = 20000.f;
     static constexpr float min_db = -60.f, max_db = 6.f;
 
-    SpectrumView(const Theme &th, SampleTap &t, bool highlight = true)
+    SpectrumView(const Theme &th, SampleTap &t, juce::Colour c)
         : theme(th), tap(t), fft(fft_size), window(fft_size),
           samples(fft_size, 0.0), input(fft_size), bins(fft.spectrumSize()),
-          db(fft.spectrumSize(), min_db), use_accent(highlight) {
+          db(fft.spectrumSize(), min_db), color(c) {
         for (size_t i = 0; i < fft_size; ++i) {
             window[i] =
                 0.5 - 0.5 * std::cos(2.0 * juce::MathConstants<double>::pi *
@@ -103,17 +103,11 @@ template <size_t fft_size> class SpectrumView : public juce::Component {
         fill.lineTo(b.getRight(), b.getBottom());
         fill.lineTo(b.getX(), b.getBottom());
         fill.closeSubPath();
-        if (use_accent) {
-            g.setColour(theme.accent.withAlpha(0.2f));
-        } else {
-            g.setColour(theme.text_dim.withAlpha(0.2f));
-        }
+
+        g.setColour(color.withAlpha(0.2f));
         g.fillPath(fill);
-        if (use_accent) {
-            g.setColour(theme.accent);
-        } else {
-            g.setColour(theme.text_dim);
-        }
+
+        g.setColour(color);
         g.strokePath(line, juce::PathStrokeType(1.5f));
 
         // gridlines at 100 Hz / 1 kHz / 10 kHz
@@ -135,5 +129,5 @@ template <size_t fft_size> class SpectrumView : public juce::Component {
     std::vector<float>                db;
     double                            window_sum = 0.0;
     double                            fs         = 0.0;
-    bool                              use_accent;
+    juce::Colour                      color;
 };

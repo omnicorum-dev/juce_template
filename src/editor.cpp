@@ -9,7 +9,7 @@
 Editor::Editor(Processor &p, APVTS &a)
     : juce::AudioProcessorEditor(&p), audio_processor(p), apvts(a),
       content(p.apvts, theme, audio_processor.input_tap,
-              audio_processor.output_tap) {
+              audio_processor.output_tap, audio_processor.sidechain_tap) {
 
     setOpaque(true);
     addAndMakeVisible(content);

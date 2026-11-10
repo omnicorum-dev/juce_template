@@ -13,6 +13,7 @@ Processor::Processor()
 #if !JucePlugin_IsMidiEffect
 #if !JucePlugin_IsSynth
               .withInput("Input", juce::AudioChannelSet::stereo(), true)
+              .withInput("Sidechain", juce::AudioChannelSet::stereo(), true)
 #endif
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
@@ -86,8 +87,8 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 
     juce::ScopedNoDenormals no_denormals;
 
-    size_t total_input_channels  = (size_t)getTotalNumInputChannels();
-    size_t total_output_channels = (size_t)getTotalNumOutputChannels();
+    size_t total_input_channels  = (size_t)getMainBusNumInputChannels();
+    size_t total_output_channels = (size_t)getMainBusNumOutputChannels();
     size_t num_samples           = (size_t)buffer.getNumSamples();
 
     for (auto i = total_input_channels; i < total_output_channels; ++i) {
@@ -120,12 +121,24 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
     MidiCursor midi(messages);
 
     constexpr size_t max_channels = 8;
-    size_t           num_channels = total_output_channels;
 
-    std::array<float *, max_channels> channel_ptrs;
+    // main input/output buffer
+    auto main_io = getBusBuffer(buffer, false, 0);
+    // sidechain input buffer
+    // (0 channels if host-disabled)
+    auto sidechain = getBusBuffer(buffer, true, 1);
+
+    size_t num_channels    = (size_t)main_io.getNumChannels();
+    size_t num_sc_channels = (size_t)sidechain.getNumChannels();
+
+    std::array<float *, max_channels>       channel_ptrs;
+    std::array<const float *, max_channels> sc_ptrs;
 
     for (size_t channel = 0; channel < num_channels; ++channel) {
-        channel_ptrs[channel] = buffer.getWritePointer((int)channel);
+        channel_ptrs[channel] = main_io.getWritePointer((int)channel);
+    }
+    for (size_t channel = 0; channel < num_sc_channels; ++channel) {
+        sc_ptrs[channel] = sidechain.getReadPointer((int)channel);
     }
 
     /* ======================================================== */
@@ -165,8 +178,14 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
             float  dry          = channel_data[sample];
             float  xn           = dry * in_gain;
 
+            float sc = 0.f;
+            if (num_sc_channels > 0) {
+                sc = sc_ptrs[std::min(channel, num_sc_channels - 1)][sample];
+            }
+
             if (channel == 0) {
                 input_tap.push(xn);
+                sidechain_tap.push(sc);
             }
 
             /* ======================================================== */
@@ -180,7 +199,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
         }
     }
 
-    output_tap.push(buffer.getReadPointer(0), buffer.getNumSamples());
+    output_tap.push(main_io.getReadPointer(0), main_io.getNumSamples());
 }
 
 /* ======================================================== */

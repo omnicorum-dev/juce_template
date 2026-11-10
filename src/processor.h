@@ -63,6 +63,11 @@ class Processor final : public juce::AudioProcessor {
         if (layouts.getMainOutputChannelSet() !=
             layouts.getMainInputChannelSet())
             return false;
+
+        const auto sc = layouts.getChannelSet(true, 1);
+        if (!sc.isDisabled() && sc != juce::AudioChannelSet::stereo() &&
+            sc != juce::AudioChannelSet::mono())
+            return false;
 #endif
         return true;
     }
@@ -137,6 +142,7 @@ class Processor final : public juce::AudioProcessor {
 
     SampleTap input_tap;
     SampleTap output_tap;
+    SampleTap sidechain_tap;
 
   private:
     static APVTS::ParameterLayout createParameterLayout();

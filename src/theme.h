@@ -11,6 +11,7 @@ struct Theme {
     juce::Colour deselected{0xff686868};
     juce::Colour hovered{0xff999999};
     juce::Colour accent{0xff3593ff};
+    juce::Colour accent2{0xff93ff35};
     juce::Colour text{0xffe0e0e0};
     juce::Colour text_dim{0xff707070};
 
