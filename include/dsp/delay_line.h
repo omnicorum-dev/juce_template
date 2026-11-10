@@ -28,6 +28,10 @@ template <int max_buffer_size> class DelayLine {
         smoother.setCurrentAndTargetValue(smoother.getCurrentValue());
     }
 
+    enum class Interpolation { Linear, Hermite, Lagrange3 };
+
+    void setInterpolation(Interpolation i) { interp = i; }
+
     /// Sets the target delay in milliseconds; the read position glides
     /// there per the current smoothing settings rather than jumping.
     void setDelayTimeMs(double delay_ms) {
@@ -62,14 +66,44 @@ template <int max_buffer_size> class DelayLine {
     /// Reads the delayed (and feedback_function-shaped) sample, then
     /// writes `xn + feedback * delayed` back into the buffer. Read
     /// happens before write, so the minimum achievable delay is 1 sample.
-    double processSample(double xn) {
-        // the smoother starts at 0 until the first target arrives, so clamp
-        // here too
-        double delay_samples = std::max(1.0, smoother.getValue());
+    ///
+    /// @param mod_samples Per-sample delay offset in samples (e.g. LFO *
+    ///                    depth). Added *after* the smoother, so fast
+    ///                    modulation isn't low-passed by the 20 ms ramp.
+    ///                    The total is clamped to [1, max_buffer_size - 1].
+    double processSample(double xn, double mod_samples = 0.0) {
+        // base delay glides via the smoother (knob changes)
+        // modulation rides on top of it unsmoothed.
+        // The clamp also covers the smoother starting at 0 before
+        // the first target arrives.
+        const double delay_samples =
+            std::clamp(smoother.getValue() + mod_samples, min_delay, max_delay);
 
         // read() is relative to the last pushed sample, which is already 1
-        // sample old
-        double delayed = buffer.readFractionalLinear(delay_samples - 1.0);
+        // sample old, so the read offset is one less than the delay
+        const double r = delay_samples - 1.0;
+
+        double delayed;
+        if (r < 1.0) {
+            // 4-point read needs the sample one step NEWER than floor(r).
+            // For r < 1, that would be the current input, which hasn't been
+            // pushed yet (and in a feedback loop can't exist), so fall
+            // back to linear in this range only.
+            delayed = buffer.readFractionalLinear(r);
+        } else {
+            switch (interp) {
+            case Interpolation::Linear:
+                delayed = buffer.readFractionalLinear(r);
+                break;
+            case Interpolation::Lagrange3:
+                delayed = buffer.readFractionalLagrange3(r);
+                break;
+            case Interpolation::Hermite:
+            default:
+                delayed = buffer.readFractionalHermite(r);
+                break;
+            }
+        }
 
         delayed = feedback_function(delayed);
         buffer.push(xn + feedback * delayed);
@@ -86,8 +120,17 @@ template <int max_buffer_size> class DelayLine {
     double fs          = 48000;
     int    buffer_size = 512;
 
-    RingBuffer<max_buffer_size> buffer;
-    ValueSmoother               smoother;
+    /// Extra buffer samples so 4-point reads near max delay never wrap
+    /// onto the newest sample. 1 is the minimum; 4 leaves room for a
+    /// 6-point interpolator later.
+    static constexpr int    guard     = 4;
+    static constexpr double min_delay = 1.0;
+    static constexpr double max_delay = (double)(max_buffer_size - 1);
+
+    RingBuffer<max_buffer_size + guard> buffer;
+
+    ValueSmoother smoother;
+    Interpolation interp = Interpolation::Hermite;
 
     double feedback = 0.;
 

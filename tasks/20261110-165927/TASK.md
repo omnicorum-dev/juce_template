@@ -2,7 +2,7 @@
 
 - STATUS: OPEN
 - PRIORITY: 100
-- TAGS: bug, template, dsp
+- TAGS: verify, template, dsp
 
 STFT has latency, but nothing calls setLatencySamples().
 Mix knob blends processed signal with dry signal

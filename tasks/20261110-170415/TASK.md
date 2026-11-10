@@ -2,7 +2,7 @@
 
 - STATUS: OPEN
 - PRIORITY: 100
-- TAGS: feature, delay, dsp
+- TAGS: verify, delay, dsp
 
 Add cubic/Hermite, Lagrange, and Thiran allpass
 reads to RingBuffer.
