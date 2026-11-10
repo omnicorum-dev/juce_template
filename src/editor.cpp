@@ -14,6 +14,9 @@ Editor::Editor(Processor &p, APVTS &a)
     setOpaque(true);
     addAndMakeVisible(content);
 
+    auto ui = apvts.state.getChildWithName("ui");
+    int  w  = ui.getProperty("width", Content::design_width / 2);
+
     setResizeLimits(Content::design_width / 4,
                     Content::design_height / 4,
                     Content::design_width * 3,
@@ -23,15 +26,14 @@ Editor::Editor(Processor &p, APVTS &a)
 
     setResizable(true, false);
 
-    auto ui = apvts.state.getChildWithName("ui");
-    int  w  = ui.getProperty("width", Content::design_width / 2);
-
     w     = std::clamp(w, Content::design_width / 4, Content::design_width * 3);
-    int h = w * (Content::design_height / Content::design_width);
+    int h = w * Content::design_height / Content::design_width;
 
     setSize(w, h);
 
     setLookAndFeel(&laf);
+
+    restoring = false;
 }
 
 Editor::~Editor() { setLookAndFeel(nullptr); }
@@ -52,7 +54,9 @@ void Editor::resized() {
                  (float)getHeight() / (float)Content::design_height);
     content.setTransform(juce::AffineTransform::scale(scale));
 
-    auto ui = apvts.state.getOrCreateChildWithName("ui", nullptr);
-    ui.setProperty("width", getWidth(), nullptr);
-    ui.setProperty("height", getHeight(), nullptr);
+    if (!restoring) {
+        auto ui = apvts.state.getOrCreateChildWithName("ui", nullptr);
+        ui.setProperty("width", getWidth(), nullptr);
+        ui.setProperty("height", getHeight(), nullptr);
+    }
 }

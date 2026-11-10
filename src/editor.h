@@ -37,6 +37,8 @@ class Editor : public juce::AudioProcessorEditor {
 
     Content content;
 
+    bool restoring = true;
+
     juce::VBlankAttachment vblank{this, [this] { onFrame(); }};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Editor)
