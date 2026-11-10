@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dsp/dry_wet.h"
 #include "juce/parameter_layout.h"
 #include "juce/sample_tap.h"
 #include "juce_audio_basics/juce_audio_basics.h"
@@ -26,6 +27,8 @@ class Processor final : public juce::AudioProcessor {
 
     void processBlock(juce::AudioBuffer<float> &buffer,
                       juce::MidiBuffer         &messages) override;
+    void processBlockBypassed(juce::AudioBuffer<float> &buffer,
+                              juce::MidiBuffer         &messages) override;
 
     double getTailLengthSeconds() const override { return 0; }
 
@@ -134,6 +137,8 @@ class Processor final : public juce::AudioProcessor {
         SCBool   bypass_default = false;
     };
 
+    static constexpr int max_latency = 0;
+
     pFloat inGainSmooth;
     pFloat outGainSmooth;
     pFloat mixSmooth;
@@ -143,6 +148,8 @@ class Processor final : public juce::AudioProcessor {
     SampleTap input_tap;
     SampleTap output_tap;
     SampleTap sidechain_tap;
+
+    DryWet<max_latency> dry_wet;
 
   private:
     static APVTS::ParameterLayout createParameterLayout();

@@ -67,6 +67,13 @@ APVTS::ParameterLayout Processor::createParameterLayout() {
 /* ======================================================== */
 
 void Processor::prepareToPlay(double sample_rate, int buffer_size) {
+    // if there are dsp objects with latency, gather them here
+    const int latency = 0;
+
+    setLatencySamples(latency);
+    dry_wet.prepare(sample_rate, latency, bypassParam.getNextValue());
+
+    // prepare parameter smoothers
     outGainSmooth.prepare(sample_rate, buffer_size, &apvts, Params::outGain_ID);
     inGainSmooth.prepare(sample_rate, buffer_size, &apvts, Params::inGain_ID);
     mixSmooth.prepare(sample_rate, buffer_size, &apvts, Params::mix_ID);
@@ -109,8 +116,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 
     /* ======================================================== */
 
-    if (bypass)
-        return;
+    dry_wet.setBypassed(bypass);
 
     /* ======================================================== */
 
@@ -161,7 +167,7 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 
         float in_gain  = std::pow(10.f, inGainSmooth.getNextValue() / 20.f);
         float out_gain = std::pow(10.f, outGainSmooth.getNextValue() / 20.f);
-        float mix      = mixSmooth.getNextValue();
+        dry_wet.tick(mixSmooth.getNextValue() * 0.01);
 
         /* ======================================================== */
 
@@ -194,12 +200,43 @@ void Processor::processBlock(juce::AudioBuffer<float> &buffer,
 
             /* ======================================================== */
 
-            float mixed = (yn * mix * 0.01f) + (dry * (100.f - mix) * 0.01f);
-            channel_data[sample] = mixed * out_gain;
+            double dry_d         = dry_wet.dry(channel, dry);
+            double out           = dry_wet.mix(yn, dry_d) * out_gain;
+            channel_data[sample] = (float)dry_wet.bypass(out, dry_d);
         }
     }
 
     output_tap.push(main_io.getReadPointer(0), main_io.getNumSamples());
+}
+
+// This might end up clicking, but it does compensate for plugin latency.
+// Prefer automating the bypass parameter to host bypass.
+void Processor::processBlockBypassed(juce::AudioBuffer<float> &b,
+                                     juce::MidiBuffer         &m) {
+    dry_wet.setBypassed(true);
+    (void)m;
+
+    constexpr size_t max_channels = 8;
+
+    // main input/output buffer
+    auto main_io = getBusBuffer(b, false, 0);
+
+    size_t num_channels = (size_t)main_io.getNumChannels();
+    size_t num_samples  = (size_t)b.getNumSamples();
+
+    std::array<float *, max_channels> channel_ptrs;
+
+    for (size_t channel = 0; channel < num_channels; ++channel) {
+        channel_ptrs[channel] = main_io.getWritePointer((int)channel);
+    }
+
+    for (size_t sample = 0; sample < num_samples; ++sample) {
+        for (size_t channel = 0; channel < num_channels; ++channel) {
+            float *channel_data  = channel_ptrs[channel];
+            float  dry           = channel_data[sample];
+            channel_data[sample] = (float)dry_wet.dry(channel, dry);
+        }
+    }
 }
 
 /* ======================================================== */
