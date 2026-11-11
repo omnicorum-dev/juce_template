@@ -14,7 +14,7 @@ namespace omni {
 /// Feedback delay line with smoothed delay-time changes.
 /// @tparam max_buffer_size Maximum delay length in samples, fixed at
 ///                          compile time (see RingBuffer).
-template <int max_buffer_size> class DelayLine {
+template <int max_buffer_size, Numeric T> class DelayLine {
   public:
     /// @param _sample_rate Audio sample rate in Hz.
     /// @param _buffer_size Host block size (currently unused).
@@ -59,9 +59,7 @@ template <int max_buffer_size> class DelayLine {
     /// AND before it's written back for feedback. Both the output tap
     /// and the feedback path go through this. Use for damping, saturation,
     /// etc. Defaults to identity passthrough.
-    void setFeedbackFunction(double (*function)(double)) {
-        feedback_function = function;
-    }
+    void setFeedbackFunction(T (*function)(T)) { feedback_function = function; }
 
     /// Reads the delayed (and feedback_function-shaped) sample, then
     /// writes `xn + feedback * delayed` back into the buffer. Read
@@ -71,7 +69,7 @@ template <int max_buffer_size> class DelayLine {
     ///                    depth). Added *after* the smoother, so fast
     ///                    modulation isn't low-passed by the 20 ms ramp.
     ///                    The total is clamped to [1, max_buffer_size - 1].
-    double processSample(double xn, double mod_samples = 0.0) {
+    T processSample(T xn, double mod_samples = 0.0) {
         // base delay glides via the smoother (knob changes)
         // modulation rides on top of it unsmoothed.
         // The clamp also covers the smoother starting at 0 before
@@ -83,7 +81,7 @@ template <int max_buffer_size> class DelayLine {
         // sample old, so the read offset is one less than the delay
         const double r = delay_samples - 1.0;
 
-        double delayed;
+        T delayed;
         if (r < 1.0) {
             // 4-point read needs the sample one step NEWER than floor(r).
             // For r < 1, that would be the current input, which hasn't been
@@ -127,14 +125,14 @@ template <int max_buffer_size> class DelayLine {
     static constexpr double min_delay = 1.0;
     static constexpr double max_delay = (double)(max_buffer_size - 1);
 
-    RingBuffer<max_buffer_size + guard> buffer;
+    RingBuffer<max_buffer_size + guard, T> buffer;
 
     ValueSmoother smoother;
     Interpolation interp = Interpolation::Hermite;
 
     double feedback = 0.;
 
-    double (*feedback_function)(double) = [](double xn) { return xn; };
+    T (*feedback_function)(T) = [](T xn) { return xn; };
 };
 
 } // namespace omni

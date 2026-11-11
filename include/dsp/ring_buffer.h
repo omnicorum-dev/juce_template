@@ -4,7 +4,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
-
 /// @file
 /// Fixed-capacity circular sample buffer with delay-style reads
 /// (including linear-interpolated fractional reads) -- the storage
@@ -12,13 +11,16 @@
 
 namespace omni {
 
+template <typename T>
+concept Numeric = std::is_arithmetic_v<T>;
+
 /// Fixed-capacity circular buffer of `double` samples, indexed by delay
 /// (samples ago) rather than by absolute position.
 /// @tparam max_buffer_size Capacity in samples, fixed at compile time.
-template <int max_buffer_size> class RingBuffer {
+template <int max_buffer_size, Numeric T> class RingBuffer {
   public:
     /// Writes one sample, overwriting the oldest once full
-    void push(double xn) {
+    void push(T xn) {
         buffer[write_head]            = xn;
         buffer[write_head + capacity] = xn;
 
@@ -29,14 +31,14 @@ template <int max_buffer_size> class RingBuffer {
     }
 
     /// Writes `num_samples` samples in order
-    void push(const double *data, size_t num_samples) {
+    void push(const T *data, size_t num_samples) {
         for (size_t i = 0; i < num_samples; ++i) {
             push(data[i]);
         }
     }
 
     /// Reads the sample `delay_samples` ago (0 = most recently pushed)
-    double read(int delay_samples = 0) const {
+    T read(int delay_samples = 0) const {
         int index = wrap(write_head - 1 - delay_samples);
         return buffer[index];
     }
@@ -46,7 +48,7 @@ template <int max_buffer_size> class RingBuffer {
     ///       wrapping read() already does internally -- harmless since
     ///       wrap() is idempotent, but worth knowing if you're tracing
     ///       through this.
-    double readFractionalLinear(double delay_samples) const {
+    T readFractionalLinear(double delay_samples) const {
         int    d0   = (int)delay_samples;
         double frac = delay_samples - d0;
         double s0   = read(d0);
@@ -57,7 +59,7 @@ template <int max_buffer_size> class RingBuffer {
     /// 4-point, 3rd-order Hermite (Catmull-Rom)
     /// Smooth first derivative, so modulated reads stay smooth.
     /// @pre 1 <= delay < capacity - 2
-    double readFractionalHermite(double delay_samples) const {
+    T readFractionalHermite(double delay_samples) const {
         const int     d   = (int)delay_samples;
         const double  t   = delay_samples - d;
         const double *p   = taps4(d);
@@ -71,7 +73,7 @@ template <int max_buffer_size> class RingBuffer {
 
     /// 4-point, 3rd-order Lagrange. Maximally flat at DC.
     /// @pre 1 <= delay < capacity - 2
-    double readFractionalLagrange3(double delay_samples) const {
+    T readFractionalLagrange3(double delay_samples) const {
         const int     d   = (int)delay_samples;
         const double  t   = delay_samples - d;
         const double *p   = taps4(d);
@@ -90,7 +92,7 @@ template <int max_buffer_size> class RingBuffer {
     ///
     /// @note @p num_samples must not exceed the current number of samples
     ///       stored in the buffer
-    void getRecent(double *output, size_t num_samples) const {
+    void getRecent(T *output, size_t num_samples) const {
         assert(num_samples <= size);
         const int start = wrap(static_cast<int>(write_head - num_samples));
         std::copy(buffer.begin() + start,
@@ -101,7 +103,7 @@ template <int max_buffer_size> class RingBuffer {
     /// 4 contiguous samples, oldest first: delays d+2, d+1, d, d-1.
     /// Uses mirrored upper half of buffer to prevent per-tap wrapping.
     /// @pre 1 <= d <= capacity - 3
-    const double *taps4(int d) const {
+    const T *taps4(int d) const {
         return &buffer[wrap(write_head - 1 - (d + 2))];
     }
 
@@ -112,12 +114,12 @@ template <int max_buffer_size> class RingBuffer {
         buffer.fill(0);
     }
 
-    size_t        getCapacity() const { return capacity; }
-    size_t        getSize() const { return size; }
-    bool          isEmpty() const { return size == 0; }
-    bool          isFull() const { return size == capacity; }
-    const double *getData() const { return buffer.data(); }
-    size_t        getWriteHead() const { return write_head; }
+    size_t   getCapacity() const { return capacity; }
+    size_t   getSize() const { return size; }
+    bool     isEmpty() const { return size == 0; }
+    bool     isFull() const { return size == capacity; }
+    const T *getData() const { return buffer.data(); }
+    size_t   getWriteHead() const { return write_head; }
 
   protected:
     int wrap(int index) const {
@@ -128,7 +130,7 @@ template <int max_buffer_size> class RingBuffer {
   private:
     static_assert(max_buffer_size > 0, "rb2: capacity must be positive");
 
-    std::array<double, max_buffer_size * 2> buffer{};
+    std::array<T, max_buffer_size * 2> buffer{};
 
     int capacity   = max_buffer_size; // was size_t — kept as int so `wrap`'s
                                       // signed-modulo trick works correctly
